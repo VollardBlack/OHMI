@@ -19,12 +19,16 @@ const RANKS = [
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard' },
+  { id: 'shop', label: 'Shop' },
+  { id: 'orders', label: 'My Orders' },
   { id: 'network', label: 'My Network' },
   { id: 'earnings', label: 'Earnings' },
-  { id: 'subscriptions', label: 'Subscription' },
   { id: 'ranks', label: 'Rank Journey' },
-  { id: 'profile', label: 'My Profile' },
+  { id: 'profile', label: 'Profile' },
 ];
+
+const fmtR = n => 'R' + Number(n || 0).toLocaleString('en-ZA', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+const fmtD = d => d ? new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
 function TreeNode({ node, map }) {
   const kids = map[node.id] || [];
@@ -38,7 +42,7 @@ function TreeNode({ node, map }) {
       </div>
       {(L || R) && (
         <div className="tree-legs">
-          {['L', 'R'].map(leg => {
+          {['L','R'].map(leg => {
             const child = leg === 'L' ? L : R;
             return (
               <div key={leg} className="tree-leg">
@@ -61,23 +65,32 @@ export default function Dashboard() {
   const [ledger, setLedger] = useState([]);
   const [sub, setSub] = useState(null);
   const [activation, setActivation] = useState(null);
+  const [packages, setPackages] = useState([]);
+  const [pkgOrders, setPkgOrders] = useState([]);
+  const [cart, setCart] = useState({});
   const [toast, setToast] = useState('');
+  const [busy, setBusy] = useState('');
+  const [checkoutStep, setCheckoutStep] = useState('browse'); // browse | cart | confirm | done
 
-  const flash = m => { setToast(m); setTimeout(() => setToast(''), 2500); };
+  const flash = m => { setToast(m); setTimeout(() => setToast(''), 3000); };
 
   useEffect(() => {
     (async () => {
-      const [m, n, l, s, a] = await Promise.all([
+      const [m, n, l, s, a, p, po] = await Promise.all([
         supabase.from('members').select('*'),
         supabase.from('network_nodes').select('*'),
         supabase.from('commission_ledger').select('*').order('created_at', { ascending: false }),
         supabase.from('subscriptions').select('*'),
         supabase.from('activations').select('*'),
+        supabase.from('packages').select('*').eq('active', true).order('sort_order'),
+        supabase.from('package_orders').select('*').order('created_at', { ascending: false }),
       ]);
       const mem = m.data || [];
       setMembers(mem);
       setNodes(n.data || []);
       setLedger(l.data || []);
+      setPackages(p.data || []);
+      setPkgOrders(po.data || []);
       const root = mem.find(x => x.email === 'brandon@ohmicoffee.co.za') || mem[0];
       setMe(root || null);
       setSub(s.data?.find(x => x.member_id === root?.id) || null);
@@ -85,47 +98,74 @@ export default function Dashboard() {
     })();
   }, []);
 
-  // Binary tree map
   const treeMap = useMemo(() => {
     const map = {};
     nodes.forEach(n => {
-      if (n.parent_id) (map[n.parent_id] = map[n.parent_id] || []).push({
-        ...n,
-        display_name: members.find(m => m.id === n.member_id)?.full_name?.split(' ')[0] || '—',
-        status: members.find(m => m.id === n.member_id)?.status || 'pending',
-      });
+      if (n.parent_id) {
+        (map[n.parent_id] = map[n.parent_id] || []).push({
+          ...n,
+          display_name: members.find(m => m.id === n.member_id)?.full_name?.split(' ')[0] || '—',
+          status: members.find(m => m.id === n.member_id)?.status || 'pending',
+        });
+      }
     });
     return map;
   }, [nodes, members]);
 
   const myNode = nodes.find(n => me && n.member_id === me.id);
-  const rootTreeNode = myNode ? {
-    ...myNode,
-    display_name: me?.full_name?.split(' ')[0] || 'You',
-    status: me?.status || 'active',
-  } : null;
-
-  // Downline counts per leg
-  const leftCount = myNode ? (treeMap[myNode.id] || []).filter(n => n.leg === 'L').length : 0;
-  const rightCount = myNode ? (treeMap[myNode.id] || []).filter(n => n.leg === 'R').length : 0;
-
-  // Current rank
+  const rootTreeNode = myNode ? { ...myNode, display_name: me?.full_name?.split(' ')[0] || 'You', status: me?.status || 'active' } : null;
+  const leftCount = myNode?.left_count || 0;
+  const rightCount = myNode?.right_count || 0;
   const currentRank = RANKS.filter(r => leftCount >= r.left && rightCount >= r.right).pop();
   const nextRank = RANKS.find(r => leftCount < r.left || rightCount < r.right);
-
-  // Earnings
   const myLedger = ledger.filter(l => me && l.member_id === me.id);
   const totalEarned = myLedger.filter(l => l.entry_type !== 'payout').reduce((s, l) => s + Number(l.amount), 0);
   const totalPaid = myLedger.filter(l => l.entry_type === 'payout').reduce((s, l) => s + Number(l.amount), 0);
   const balance = totalEarned - totalPaid;
+  const myPkgOrders = pkgOrders.filter(o => me && o.member_id === me.id);
+  const refLink = me ? `${typeof window !== 'undefined' ? window.location.origin : 'https://ohmi-coffee-co.vercel.app'}/join?ref=${me.id}` : '';
 
-  const fmtR = n => 'R' + Number(n || 0).toLocaleString('en-ZA');
-  const fmtD = d => d ? new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+  // Cart helpers
+  const cartItems = packages.filter(p => cart[p.id] > 0).map(p => ({ ...p, qty: cart[p.id] }));
+  const cartTotal = cartItems.reduce((s, i) => s + Number(i.price) * i.qty, 0);
+  const cartPool = cartItems.reduce((s, i) => s + Number(i.pool_contribution) * i.qty, 0);
+  const addToCart = (id, d) => setCart(c => ({ ...c, [id]: Math.max(0, (c[id] || 0) + d) }));
+  const clearCart = () => setCart({});
 
-  const refLink = me ? `https://ohmi-coffee-co.vercel.app/join?ref=${me.id}` : '';
+  async function placeOrder() {
+    if (!me || cartItems.length === 0) return;
+    setBusy('order');
+    const period = new Date().toISOString().slice(0, 7) + '-01';
+    const orders = cartItems.map(i => ({
+      member_id: me.id,
+      package_id: i.id,
+      quantity: i.qty,
+      total: Number(i.price) * i.qty,
+      pool_contribution: Number(i.pool_contribution) * i.qty,
+      status: 'pending',
+      billing_period: period,
+    }));
+    const { error } = await supabase.from('package_orders').insert(orders);
+    if (error) { flash('Order failed — ' + error.message); setBusy(''); return; }
+    // Update pool contributions
+    const poolInsert = cartItems.map(i => ({
+      member_id: me.id,
+      period: period,
+      amount: Number(i.pool_contribution) * i.qty,
+      active: true,
+    }));
+    await supabase.from('pool_contributions').insert(poolInsert);
+    clearCart();
+    setBusy('');
+    setCheckoutStep('done');
+    // Refresh orders
+    const { data } = await supabase.from('package_orders').select('*').order('created_at', { ascending: false });
+    setPkgOrders(data || []);
+  }
 
   return (
     <div className="dash-shell">
+      {/* Sidebar */}
       <aside className="dash-side">
         <div className="dash-logo">
           <div className="ohmi-logo" style={{ fontSize: 20 }}>OHMI<span>.</span></div>
@@ -139,16 +179,24 @@ export default function Dashboard() {
         </div>
         <nav className="dash-nav">
           {NAV.map(n => (
-            <button key={n.id} className={tab === n.id ? 'on' : ''} onClick={() => setTab(n.id)}>{n.label}</button>
+            <button key={n.id} className={tab === n.id ? 'on' : ''} onClick={() => { setTab(n.id); if (n.id === 'shop') setCheckoutStep('browse'); }}>
+              {n.label}
+              {n.id === 'shop' && Object.values(cart).some(v => v > 0) && (
+                <span style={{ marginLeft: 8, background: 'var(--gold)', color: 'var(--black)', borderRadius: 10, padding: '1px 7px', fontSize: 10, fontWeight: 800 }}>
+                  {Object.values(cart).reduce((a, b) => a + b, 0)}
+                </span>
+              )}
+            </button>
           ))}
         </nav>
         <div className="dash-foot">
           <Link href="/">← Shop</Link>
-          <span style={{ margin: '0 10px', color: '#333' }}>·</span>
+          <span style={{ margin: '0 8px', color: '#333' }}>·</span>
           <Link href="/admin" style={{ color: 'var(--dim)' }}>Admin</Link>
         </div>
       </aside>
 
+      {/* Main content */}
       <main className="dash-main">
         <div className="dash-topbar">
           <div>
@@ -157,94 +205,295 @@ export default function Dashboard() {
               OHMI Coffee Co. · {me?.email}
             </div>
           </div>
-          <div className="rank-badge">{currentRank?.name || 'Unranked'}</div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            {balance > 0 && <div className="admin-badge">{fmtR(balance)} available</div>}
+            <div className="rank-badge">{currentRank?.name || 'Unranked'}</div>
+          </div>
         </div>
 
-        {/* ═══ DASHBOARD ═══ */}
+        {/* ═══ DASHBOARD ══════════════════════════════════ */}
         {tab === 'dashboard' && <>
           <div className="stat-grid" style={{ marginBottom: 20 }}>
-            <div className="stat-box"><div className="stat-val">{fmtR(totalEarned)}</div><div className="stat-label">Total earned</div></div>
-            <div className="stat-box"><div className="stat-val">{fmtR(balance)}</div><div className="stat-label">Available balance</div></div>
-            <div className="stat-box"><div className="stat-val">{members.length - 1}</div><div className="stat-label">Network members</div></div>
-            <div className="stat-box"><div className="stat-val">{currentRank?.name || '—'}</div><div className="stat-label">Current rank</div></div>
+            <div className="stat-box"><div className="stat-val">{fmtR(totalEarned)}</div><div className="stat-label">Total Earned</div></div>
+            <div className="stat-box"><div className="stat-val">{fmtR(balance)}</div><div className="stat-label">Available Balance</div></div>
+            <div className="stat-box"><div className="stat-val">{members.length - 1}</div><div className="stat-label">Network Members</div></div>
+            <div className="stat-box"><div className="stat-val">{currentRank?.name || '—'}</div><div className="stat-label">Current Rank</div></div>
           </div>
 
-          {/* Rank progress */}
           {nextRank && (
             <div className="card" style={{ marginBottom: 20 }}>
-              <div className="kicker" style={{ marginBottom: 10 }}>Next rank — {nextRank.name}</div>
+              <div className="kicker" style={{ marginBottom: 10 }}>Progress to {nextRank.name}</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                <div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>Left leg</div>
-                  <div style={{ height: 6, background: '#1e1e1e', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', background: 'var(--gold)', width: `${Math.min(100, (leftCount / nextRank.left) * 100)}%`, transition: 'width 0.4s' }} />
+                {[['Left leg', leftCount, nextRank.left],['Right leg', rightCount, nextRank.right]].map(([label, cur, needed]) => (
+                  <div key={label}>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>{label}</div>
+                    <div style={{ height: 6, background: '#1e1e1e', borderRadius: 3, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', background: 'var(--gold)', width: `${Math.min(100, (cur / needed) * 100)}%`, transition: 'width 0.4s' }} />
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--gold)', marginTop: 5 }}>{cur} / {needed}</div>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--gold)', marginTop: 5 }}>{leftCount} / {nextRank.left}</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>Right leg</div>
-                  <div style={{ height: 6, background: '#1e1e1e', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', background: 'var(--gold)', width: `${Math.min(100, (rightCount / nextRank.right) * 100)}%`, transition: 'width 0.4s' }} />
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--gold)', marginTop: 5 }}>{rightCount} / {nextRank.right}</div>
-                </div>
+                ))}
               </div>
               <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
                 Achieving {nextRank.name} unlocks <strong style={{ color: 'var(--gold)' }}>{fmtR(nextRank.pool)}/month</strong>
-                {nextRank.bonus > 0 && <> + <strong style={{ color: 'var(--gold)' }}>{fmtR(nextRank.bonus)} discretionary bonus</strong></>}
+                {nextRank.bonus > 0 && <> + <strong style={{ color: 'var(--gold2)' }}>{fmtR(nextRank.bonus)} discretionary bonus</strong></>}
               </div>
             </div>
           )}
 
-          {/* Referral link */}
           <div className="card" style={{ marginBottom: 20 }}>
             <div className="kicker" style={{ marginBottom: 8 }}>Your referral link</div>
-            <div style={{ background: 'var(--dark3)', padding: '12px 14px', fontSize: 12, color: 'var(--muted)', wordBreak: 'break-all', marginBottom: 12, border: '1px solid #2a2a2a' }}>{refLink}</div>
+            <div style={{ background: 'var(--dark3)', padding: '11px 14px', fontSize: 12, color: 'var(--muted)', wordBreak: 'break-all', marginBottom: 12, border: '1px solid #2a2a2a' }}>{refLink}</div>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn btn-gold btn-sm" onClick={() => { navigator.clipboard?.writeText(refLink); flash('Link copied!'); }}>Copy link</button>
-              <a className="btn btn-outline btn-sm" href={`https://wa.me/?text=${encodeURIComponent('Join me on OHMI Coffee Co — One Team. One Dream. One Legacy.\n' + refLink)}`} target="_blank" rel="noreferrer">Share on WhatsApp</a>
+              <a className="btn btn-outline btn-sm" href={`https://wa.me/?text=${encodeURIComponent('Join OHMI Coffee Co. — One Team. One Dream. One Legacy.\n' + refLink)}`} target="_blank" rel="noreferrer">WhatsApp</a>
             </div>
           </div>
 
-          {/* Subscription status */}
           <div className="card">
-            <div className="kicker" style={{ marginBottom: 10 }}>Subscription status</div>
-            <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Monthly</div>
-                <div style={{ fontSize: 18, fontFamily: 'var(--display)', color: 'var(--gold)' }}>R{sub?.amount || 1500}/month</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Pool contribution</div>
-                <div style={{ fontSize: 18, fontFamily: 'var(--display)', color: 'var(--gold)' }}>R{sub?.pool_contribution || 500}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Status</div>
-                <div style={{ marginTop: 4 }}><span className={`pill ${sub?.status === 'active' ? 'pill-green' : 'pill-red'}`}>{sub?.status || 'inactive'}</span></div>
-              </div>
-              <div>
-                <div style={{ fontSize: 11, color: 'var(--muted)' }}>Activation</div>
-                <div style={{ marginTop: 4 }}><span className={`pill ${activation?.status === 'paid' ? 'pill-green' : 'pill-gold'}`}>R2,500 — {activation?.status || 'pending'}</span></div>
-              </div>
+            <div className="kicker" style={{ marginBottom: 10 }}>Subscription</div>
+            <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+              {[
+                ['Monthly', `R${sub?.amount || 1500}/month`],
+                ['Pool contribution', `R${sub?.pool_contribution || 500}`],
+                ['Status', sub?.status || 'inactive'],
+                ['Activation', `R2,500 — ${activation?.status || 'pending'}`],
+              ].map(([l, v]) => (
+                <div key={l}>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>{l}</div>
+                  <div style={{ fontSize: 16, fontFamily: 'var(--display)', color: 'var(--gold)', fontWeight: 700 }}>{v}</div>
+                </div>
+              ))}
             </div>
           </div>
         </>}
 
-        {/* ═══ NETWORK ═══ */}
+        {/* ═══ SHOP ═══════════════════════════════════════ */}
+        {tab === 'shop' && <>
+
+          {/* Browse */}
+          {checkoutStep === 'browse' && <>
+            <div style={{ marginBottom: 24 }}>
+              <div className="kicker" style={{ marginBottom: 6 }}>Uganda Bugisu AA · Contract roasted by Wiara Coffee</div>
+              <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.8, maxWidth: '60ch' }}>
+                Every package includes real coffee and feeds R15/kg into the OHMI Foundation.
+                Every purchase contributes to the binary pool — growing your network's earning power.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20, marginBottom: 24 }}>
+              {packages.map(pkg => {
+                const qty = cart[pkg.id] || 0;
+                const includes = Array.isArray(pkg.includes) ? pkg.includes : JSON.parse(pkg.includes || '[]');
+                return (
+                  <div key={pkg.id} style={{ background: 'var(--dark2)', border: `1px solid ${qty > 0 ? 'var(--gold)' : '#2a2a2a'}`, display: 'flex', flexDirection: 'column', transition: 'border-color 0.2s' }}>
+                    {/* Header visual */}
+                    <div style={{ background: '#0d0d0d', padding: '32px 24px', borderBottom: '1px solid #1e1e1e', position: 'relative' }}>
+                      {pkg.badge && (
+                        <div style={{ position: 'absolute', top: 14, right: 14, background: 'var(--gold)', color: 'var(--black)', fontSize: 9, fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', padding: '4px 10px' }}>
+                          {pkg.badge}
+                        </div>
+                      )}
+                      <div style={{ fontFamily: 'var(--display)', fontSize: 44, fontWeight: 700, color: 'var(--gold)', lineHeight: 1 }}>
+                        {pkg.coffee_kg < 1 ? `${pkg.coffee_kg * 1000}g` : `${pkg.coffee_kg}kg`}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--dim)', letterSpacing: '0.2em', textTransform: 'uppercase', marginTop: 6 }}>
+                        Uganda Bugisu AA
+                      </div>
+                    </div>
+
+                    {/* Details */}
+                    <div style={{ padding: '20px 24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                      <h3 style={{ fontFamily: 'var(--display)', fontSize: 22, fontWeight: 600, marginBottom: 4 }}>{pkg.name}</h3>
+                      <div style={{ fontSize: 12, color: 'var(--gold)', fontStyle: 'italic', marginBottom: 12 }}>{pkg.tagline}</div>
+                      <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.8, marginBottom: 16 }}>{pkg.description}</p>
+
+                      {/* Includes */}
+                      <div style={{ marginBottom: 20, flex: 1 }}>
+                        {includes.map((item, i) => (
+                          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', marginBottom: 6 }}>
+                            <span style={{ color: 'var(--gold)', fontSize: 12, marginTop: 1, flexShrink: 0 }}>✓</span>
+                            <span style={{ fontSize: 12, color: 'var(--muted)' }}>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Pool callout */}
+                      <div style={{ background: 'var(--dark3)', border: '1px solid #2a2a2a', padding: '10px 14px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Pool contribution</span>
+                        <span style={{ fontFamily: 'var(--display)', fontSize: 18, color: 'var(--gold)', fontWeight: 700 }}>{fmtR(pkg.pool_contribution)}</span>
+                      </div>
+
+                      {/* Price + cart */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div style={{ fontFamily: 'var(--display)', fontSize: 32, fontWeight: 700, color: 'var(--gold)' }}>
+                          {fmtR(pkg.price)}
+                        </div>
+                        {qty > 0 ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <button onClick={() => addToCart(pkg.id, -1)} style={{ width: 34, height: 34, background: 'var(--dark3)', border: '1px solid #333', color: 'var(--white)', fontSize: 18, cursor: 'pointer' }}>−</button>
+                            <span style={{ fontFamily: 'var(--display)', fontSize: 20, fontWeight: 700, minWidth: 20, textAlign: 'center' }}>{qty}</span>
+                            <button onClick={() => addToCart(pkg.id, 1)} style={{ width: 34, height: 34, background: 'var(--dark3)', border: '1px solid var(--gold)', color: 'var(--gold)', fontSize: 18, cursor: 'pointer' }}>+</button>
+                          </div>
+                        ) : (
+                          <button className="btn btn-gold btn-sm" onClick={() => addToCart(pkg.id, 1)}>Add to order</button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Cart summary bar */}
+            {cartItems.length > 0 && (
+              <div style={{ position: 'sticky', bottom: 24, background: 'var(--dark)', border: '1px solid var(--gold)', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                  <div>
+                    <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: '0.14em', textTransform: 'uppercase' }}>Order total</div>
+                    <div style={{ fontFamily: 'var(--display)', fontSize: 24, color: 'var(--gold)', fontWeight: 700 }}>{fmtR(cartTotal)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: '0.14em', textTransform: 'uppercase' }}>Pool contribution</div>
+                    <div style={{ fontFamily: 'var(--display)', fontSize: 24, color: 'var(--gold2)', fontWeight: 700 }}>{fmtR(cartPool)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: '0.14em', textTransform: 'uppercase' }}>Items</div>
+                    <div style={{ fontFamily: 'var(--display)', fontSize: 24, color: 'var(--white)', fontWeight: 700 }}>
+                      {cartItems.reduce((a, i) => a + i.qty, 0)}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button className="btn btn-dark btn-sm" onClick={clearCart}>Clear</button>
+                  <button className="btn btn-gold" onClick={() => setCheckoutStep('cart')}>Review order →</button>
+                </div>
+              </div>
+            )}
+          </>}
+
+          {/* Cart review */}
+          {checkoutStep === 'cart' && (
+            <div style={{ maxWidth: 580 }}>
+              <div className="kicker" style={{ marginBottom: 16 }}>Review your order</div>
+              <div className="card" style={{ marginBottom: 16 }}>
+                {cartItems.map(i => {
+                  const includes = Array.isArray(i.includes) ? i.includes : JSON.parse(i.includes || '[]');
+                  return (
+                    <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '16px 0', borderBottom: '1px solid #1e1e1e' }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontWeight: 700, fontSize: 15 }}>{i.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>{includes[0]} · Qty: {i.qty}</div>
+                        <div style={{ fontSize: 11, color: 'var(--gold)', marginTop: 4 }}>Pool contribution: {fmtR(Number(i.pool_contribution) * i.qty)}</div>
+                      </div>
+                      <div style={{ fontFamily: 'var(--display)', fontSize: 22, color: 'var(--gold)', fontWeight: 700, marginLeft: 20 }}>
+                        {fmtR(Number(i.price) * i.qty)}
+                      </div>
+                    </div>
+                  );
+                })}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '16px 0 0', marginTop: 4 }}>
+                  <div>
+                    <div style={{ fontFamily: 'var(--display)', fontSize: 24, fontWeight: 700 }}>Total</div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 2 }}>Incl. {fmtR(cartPool)} pool contribution</div>
+                  </div>
+                  <div style={{ fontFamily: 'var(--display)', fontSize: 28, color: 'var(--gold)', fontWeight: 700 }}>{fmtR(cartTotal)}</div>
+                </div>
+              </div>
+
+              <div className="card" style={{ marginBottom: 16, borderLeft: '3px solid #2a2a2a', padding: '16px 20px' }}>
+                <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.8 }}>
+                  <strong style={{ color: 'var(--white)' }}>Payment via EFT</strong><br />
+                  Bank: FNB · OHMI Coffee Co. (Pty) Ltd<br />
+                  Amount: <strong style={{ color: 'var(--gold)' }}>{fmtR(cartTotal)}</strong><br />
+                  Reference: <strong style={{ color: 'var(--gold)' }}>{me?.id?.slice(0, 8)?.toUpperCase()}-ORDER</strong><br />
+                  <span style={{ color: 'var(--dim)' }}>Send proof of payment to orders@ohmicoffee.co.za</span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button className="btn btn-dark" onClick={() => setCheckoutStep('browse')}>← Back</button>
+                <button className="btn btn-gold" style={{ flex: 1 }} disabled={busy === 'order'} onClick={placeOrder}>
+                  {busy === 'order' ? 'Placing order…' : 'Confirm order — Payment on EFT'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Done */}
+          {checkoutStep === 'done' && (
+            <div style={{ maxWidth: 520 }}>
+              <div className="card card-gold">
+                <div style={{ textAlign: 'center', padding: '10px 0 20px' }}>
+                  <div style={{ fontSize: 48, marginBottom: 12 }}>☕</div>
+                  <div className="kicker" style={{ marginBottom: 10 }}>Order placed</div>
+                  <h2 style={{ fontFamily: 'var(--display)', fontSize: 28, marginBottom: 16 }}>We roast on Tuesdays.</h2>
+                  <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.8, marginBottom: 20 }}>
+                    Your order is confirmed. Complete your EFT payment using the reference below and
+                    we'll fulfil within 48 hours of roasting. Your pool contribution is live.
+                  </p>
+                </div>
+                <div style={{ background: 'var(--dark3)', padding: 16, marginBottom: 20, borderLeft: '3px solid var(--gold)' }}>
+                  <div style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.8 }}>
+                    <strong style={{ color: 'var(--white)' }}>Payment reference</strong><br />
+                    <span style={{ fontFamily: 'var(--display)', fontSize: 18, color: 'var(--gold)' }}>
+                      {me?.id?.slice(0, 8)?.toUpperCase()}-ORDER
+                    </span>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => { setTab('orders'); setCheckoutStep('browse'); }}>View my orders</button>
+                  <button className="btn btn-gold" style={{ flex: 1 }} onClick={() => setCheckoutStep('browse')}>Order more</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>}
+
+        {/* ═══ MY ORDERS ══════════════════════════════════ */}
+        {tab === 'orders' && (
+          <div className="card">
+            <div className="kicker" style={{ marginBottom: 14 }}>Package Orders</div>
+            <table className="ohmi-table">
+              <thead><tr><th>Package</th><th>Qty</th><th>Total</th><th>Pool</th><th>Status</th><th>Date</th></tr></thead>
+              <tbody>
+                {myPkgOrders.length ? myPkgOrders.map(o => {
+                  const pkg = packages.find(p => p.id === o.package_id);
+                  return (
+                    <tr key={o.id}>
+                      <td style={{ fontWeight: 600 }}>{pkg?.name || '—'}</td>
+                      <td>{o.quantity}</td>
+                      <td style={{ color: 'var(--gold)', fontWeight: 700 }}>{fmtR(o.total)}</td>
+                      <td style={{ color: 'var(--gold2)' }}>{fmtR(o.pool_contribution)}</td>
+                      <td><span className={`pill ${o.status==='fulfilled'?'pill-green':o.status==='pending'?'pill-gold':'pill-red'}`}>{o.status}</span></td>
+                      <td style={{ color: 'var(--dim)', fontSize: 12 }}>{fmtD(o.created_at)}</td>
+                    </tr>
+                  );
+                }) : (
+                  <tr><td colSpan="6" style={{ color: 'var(--dim)', textAlign: 'center', padding: 24 }}>
+                    No orders yet — <button className="btn btn-gold btn-sm" style={{ marginLeft: 8 }} onClick={() => { setTab('shop'); setCheckoutStep('browse'); }}>browse packages</button>
+                  </td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* ═══ NETWORK ════════════════════════════════════ */}
         {tab === 'network' && <>
           <div className="stat-grid" style={{ marginBottom: 20 }}>
-            <div className="stat-box"><div className="stat-val">{leftCount}</div><div className="stat-label">Left leg</div></div>
-            <div className="stat-box"><div className="stat-val">{rightCount}</div><div className="stat-label">Right leg</div></div>
-            <div className="stat-box"><div className="stat-val">{members.length - 1}</div><div className="stat-label">Total downline</div></div>
+            <div className="stat-box"><div className="stat-val">{leftCount}</div><div className="stat-label">Left Leg</div></div>
+            <div className="stat-box"><div className="stat-val">{rightCount}</div><div className="stat-label">Right Leg</div></div>
+            <div className="stat-box"><div className="stat-val">{members.length - 1}</div><div className="stat-label">Total Downline</div></div>
           </div>
-          <div className="card">
+          <div className="card" style={{ marginBottom: 16 }}>
             <div className="kicker" style={{ marginBottom: 16 }}>Binary tree</div>
             <div className="tree-wrap">
               {rootTreeNode ? <TreeNode node={rootTreeNode} map={treeMap} /> : <p style={{ color: 'var(--dim)' }}>Loading…</p>}
             </div>
           </div>
-          <div className="card" style={{ marginTop: 16 }}>
-            <div className="kicker" style={{ marginBottom: 14 }}>All network members</div>
+          <div className="card">
+            <div className="kicker" style={{ marginBottom: 14 }}>Network members</div>
             <table className="ohmi-table">
               <thead><tr><th>Name</th><th>Email</th><th>Joined</th><th>Status</th></tr></thead>
               <tbody>
@@ -253,7 +502,7 @@ export default function Dashboard() {
                     <td style={{ fontWeight: 600 }}>{m.full_name}</td>
                     <td style={{ color: 'var(--muted)' }}>{m.email}</td>
                     <td style={{ color: 'var(--dim)' }}>{fmtD(m.created_at)}</td>
-                    <td><span className={`pill ${m.status === 'active' ? 'pill-green' : 'pill-grey'}`}>{m.status}</span></td>
+                    <td><span className={`pill ${m.status==='active'?'pill-green':'pill-grey'}`}>{m.status}</span></td>
                   </tr>
                 ))}
                 {members.length <= 1 && <tr><td colSpan="4" style={{ color: 'var(--dim)', textAlign: 'center', padding: 20 }}>No network members yet — share your referral link.</td></tr>}
@@ -262,22 +511,22 @@ export default function Dashboard() {
           </div>
         </>}
 
-        {/* ═══ EARNINGS ═══ */}
+        {/* ═══ EARNINGS ═══════════════════════════════════ */}
         {tab === 'earnings' && <>
           <div className="stat-grid" style={{ marginBottom: 20 }}>
-            <div className="stat-box"><div className="stat-val">{fmtR(totalEarned)}</div><div className="stat-label">Total earned</div></div>
-            <div className="stat-box"><div className="stat-val">{fmtR(totalPaid)}</div><div className="stat-label">Paid out</div></div>
+            <div className="stat-box"><div className="stat-val">{fmtR(totalEarned)}</div><div className="stat-label">Total Earned</div></div>
+            <div className="stat-box"><div className="stat-val">{fmtR(totalPaid)}</div><div className="stat-label">Paid Out</div></div>
             <div className="stat-box"><div className="stat-val">{fmtR(balance)}</div><div className="stat-label">Available</div></div>
           </div>
           {balance >= 500 && (
             <div className="card card-gold" style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <div>
                 <div style={{ fontWeight: 700, marginBottom: 4 }}>Request payout — {fmtR(balance)}</div>
-                <div style={{ fontSize: 12, color: 'var(--muted)' }}>Processed within 3 business days</div>
+                <div style={{ fontSize: 12, color: 'var(--muted)' }}>Processed within 3 business days via EFT</div>
               </div>
               <button className="btn btn-gold" onClick={async () => {
-                const { error } = await supabase.from('commission_ledger').insert({ member_id: me.id, entry_type: 'payout', amount: balance, note: 'Manual payout request', period: new Date().toISOString().slice(0, 7) + '-01' });
-                if (error) flash('Payout request failed'); else flash('Payout request submitted ✓');
+                const { error } = await supabase.from('commission_ledger').insert({ member_id: me.id, entry_type: 'payout', amount: balance, note: 'Member payout request', period: new Date().toISOString().slice(0, 7) + '-01' });
+                if (error) flash('Request failed'); else flash('✓ Payout request submitted');
               }}>Request payout</button>
             </div>
           )}
@@ -288,10 +537,10 @@ export default function Dashboard() {
               <tbody>
                 {myLedger.length ? myLedger.map(l => (
                   <tr key={l.id}>
-                    <td style={{ color: 'var(--dim)' }}>{fmtD(l.created_at)}</td>
-                    <td><span className={`pill ${l.entry_type === 'payout' ? 'pill-red' : 'pill-gold'}`}>{l.entry_type.replace('_', ' ')}</span></td>
+                    <td style={{ color: 'var(--dim)', fontSize: 12 }}>{fmtD(l.created_at)}</td>
+                    <td><span className={`pill ${l.entry_type==='payout'?'pill-red':'pill-gold'}`}>{l.entry_type.replace('_',' ')}</span></td>
                     <td style={{ color: 'var(--muted)', fontSize: 12 }}>{l.note}</td>
-                    <td style={{ fontFamily: 'var(--display)', fontSize: 18, color: l.entry_type === 'payout' ? '#e07070' : 'var(--gold)', fontWeight: 700 }}>{fmtR(l.amount)}</td>
+                    <td style={{ fontFamily: 'var(--display)', fontSize: 18, color: l.entry_type==='payout'?'#e07070':'var(--gold)', fontWeight: 700 }}>{fmtR(l.amount)}</td>
                   </tr>
                 )) : (
                   <tr><td colSpan="4" style={{ color: 'var(--dim)', textAlign: 'center', padding: 20 }}>Ledger fills after the first billing run.</td></tr>
@@ -301,54 +550,14 @@ export default function Dashboard() {
           </div>
         </>}
 
-        {/* ═══ SUBSCRIPTION ═══ */}
-        {tab === 'subscriptions' && <>
-          <div className="card card-gold" style={{ marginBottom: 20 }}>
-            <div className="kicker" style={{ marginBottom: 10 }}>Current plan</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 20 }}>
-              {[
-                ['Monthly', `R${sub?.amount || 1500}`],
-                ['Pool contribution', `R${sub?.pool_contribution || 500}`],
-                ['OHMI retention', `R${(sub?.amount || 1500) - (sub?.pool_contribution || 500)}`],
-                ['Status', sub?.status || 'active'],
-                ['Activation', `R2,500 — ${activation?.status || 'pending'}`],
-              ].map(([l, v]) => (
-                <div key={l}>
-                  <div style={{ fontSize: 10, color: 'var(--muted)', letterSpacing: '0.16em', textTransform: 'uppercase', marginBottom: 6 }}>{l}</div>
-                  <div style={{ fontSize: 18, fontFamily: 'var(--display)', color: 'var(--gold)', fontWeight: 700 }}>{v}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="card">
-            <div className="kicker" style={{ marginBottom: 12 }}>How your R1,500 works</div>
-            {[
-              ['R500', 'Binary commission pool', 'Funds 30% rep payouts across the entire network'],
-              ['R1,000', 'OHMI retention', 'Covers roasting, packaging, Foundation, and discretionary bonuses'],
-            ].map(([amt, label, desc]) => (
-              <div key={label} style={{ display: 'flex', gap: 16, padding: '14px 0', borderBottom: '1px solid #1e1e1e', alignItems: 'flex-start' }}>
-                <div style={{ fontFamily: 'var(--display)', fontSize: 22, color: 'var(--gold)', fontWeight: 700, minWidth: 60 }}>{amt}</div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>{label}</div>
-                  <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>{desc}</div>
-                </div>
-              </div>
-            ))}
-            <p style={{ fontSize: 11, color: 'var(--dim)', marginTop: 14, lineHeight: 1.7 }}>
-              Actuarially proven solvent at all network sizes. OHMI retains minimum R350/member at all times.
-              Ref: OHMI-ACT-2026-002.
-            </p>
-          </div>
-        </>}
-
-        {/* ═══ RANK JOURNEY ═══ */}
+        {/* ═══ RANKS ══════════════════════════════════════ */}
         {tab === 'ranks' && (
           <div className="card">
             <div className="kicker" style={{ marginBottom: 14 }}>Your journey — 10 ranks</div>
             <table className="ohmi-table">
-              <thead><tr><th>Rank</th><th>Left leg</th><th>Right leg</th><th>Pool PM</th><th>Disc. bonus</th><th>Status</th></tr></thead>
+              <thead><tr><th>Rank</th><th>Left</th><th>Right</th><th>Pool PM</th><th>Disc. Bonus</th><th>Status</th></tr></thead>
               <tbody>
-                {RANKS.map((r, i) => {
+                {RANKS.map(r => {
                   const achieved = leftCount >= r.left && rightCount >= r.right;
                   const isCurrent = r.name === currentRank?.name;
                   return (
@@ -368,24 +577,21 @@ export default function Dashboard() {
                 })}
               </tbody>
             </table>
-            <p style={{ fontSize: 11, color: 'var(--dim)', marginTop: 14, lineHeight: 1.7 }}>
-              Pool PM = your 30% share of the binary pool based on active members in your network.
-              Disc. bonus = discretionary amount paid from OHMI 70% retention — not contractually guaranteed.
-              OHMI-ACT-2026-002.
-            </p>
           </div>
         )}
 
-        {/* ═══ PROFILE ═══ */}
+        {/* ═══ PROFILE ════════════════════════════════════ */}
         {tab === 'profile' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
             <div className="card">
               <div style={{ textAlign: 'center', marginBottom: 20 }}>
-                <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, var(--gold), var(--gold2))', color: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 28, margin: '0 auto 12px' }}>{me?.full_name?.[0]}</div>
+                <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'linear-gradient(135deg, var(--gold), var(--gold2))', color: 'var(--black)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 28, margin: '0 auto 12px' }}>
+                  {me?.full_name?.[0]}
+                </div>
                 <div style={{ fontFamily: 'var(--display)', fontSize: 22, fontWeight: 600 }}>{me?.full_name}</div>
                 <div style={{ color: 'var(--gold)', fontSize: 11, letterSpacing: '0.14em', textTransform: 'uppercase', marginTop: 4 }}>{currentRank?.name || 'Unranked'}</div>
               </div>
-              {[['Email', me?.email], ['Phone', me?.phone || '—'], ['Status', me?.status], ['Joined', fmtD(me?.created_at)], ['Member ID', me?.id?.slice(0, 8) + '…']].map(([l, v]) => (
+              {[['Email', me?.email],['Phone', me?.phone || '—'],['Status', me?.status],['Joined', fmtD(me?.created_at)],['Member ID', me?.id?.slice(0,8)?.toUpperCase() + '…']].map(([l,v]) => (
                 <div key={l} style={{ display: 'flex', gap: 12, padding: '10px 0', borderBottom: '1px solid #1e1e1e', fontSize: 13 }}>
                   <span style={{ color: 'var(--muted)', minWidth: 90 }}>{l}</span>
                   <span style={{ wordBreak: 'break-all' }}>{v}</span>
@@ -395,16 +601,12 @@ export default function Dashboard() {
             <div className="card">
               <div className="kicker" style={{ marginBottom: 14 }}>Referral link</div>
               <div style={{ background: 'var(--dark3)', padding: '12px 14px', fontSize: 12, color: 'var(--muted)', wordBreak: 'break-all', marginBottom: 14, border: '1px solid #2a2a2a' }}>{refLink}</div>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
                 <button className="btn btn-gold btn-sm" onClick={() => { navigator.clipboard?.writeText(refLink); flash('Copied!'); }}>Copy</button>
                 <a className="btn btn-outline btn-sm" href={`https://wa.me/?text=${encodeURIComponent('Join OHMI: ' + refLink)}`} target="_blank" rel="noreferrer">WhatsApp</a>
               </div>
-              <div style={{ marginTop: 20 }}>
-                <div className="kicker" style={{ marginBottom: 10 }}>Foundation</div>
-                <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.8 }}>
-                  R15 from every kilogram of coffee in your subscription goes toward feeding children in the Bitou region. You are part of the legacy.
-                </p>
-              </div>
+              <div className="kicker" style={{ marginBottom: 8 }}>Foundation</div>
+              <p style={{ fontSize: 12, color: 'var(--muted)', lineHeight: 1.8 }}>R15 from every kilogram in your subscription feeds children in the Bitou region. You are part of the legacy.</p>
             </div>
           </div>
         )}
