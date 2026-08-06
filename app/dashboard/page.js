@@ -116,8 +116,12 @@ export default function Dashboard() {
   const rootTreeNode = myNode ? { ...myNode, display_name: me?.full_name?.split(' ')[0] || 'You', status: me?.status || 'active' } : null;
   const leftCount = myNode?.left_count || 0;
   const rightCount = myNode?.right_count || 0;
-  const currentRank = RANKS.filter(r => leftCount >= r.left && rightCount >= r.right).pop();
-  const nextRank = RANKS.find(r => leftCount < r.left || rightCount < r.right);
+  // Rank is determined by the WEAKER leg — both legs must meet the threshold
+  const qualifyingLeg = Math.min(leftCount, rightCount);
+  const currentRank = RANKS.filter(r => r.left <= qualifyingLeg && r.right <= qualifyingLeg).pop();
+  const nextRank = RANKS.find(r => r.left > qualifyingLeg || r.right > qualifyingLeg);
+  const weakerLeg = leftCount <= rightCount ? 'left' : 'right';
+  const strongerLeg = leftCount > rightCount ? 'left' : 'right';
   const myLedger = ledger.filter(l => me && l.member_id === me.id);
   const totalEarned = myLedger.filter(l => l.entry_type !== 'payout').reduce((s, l) => s + Number(l.amount), 0);
   const totalPaid = myLedger.filter(l => l.entry_type === 'payout').reduce((s, l) => s + Number(l.amount), 0);
@@ -222,21 +226,44 @@ export default function Dashboard() {
 
           {nextRank && (
             <div className="card" style={{ marginBottom: 20 }}>
-              <div className="kicker" style={{ marginBottom: 10 }}>Progress to {nextRank.name}</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                {[['Left leg', leftCount, nextRank.left],['Right leg', rightCount, nextRank.right]].map(([label, cur, needed]) => (
-                  <div key={label}>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 6 }}>{label}</div>
-                    <div style={{ height: 6, background: '#1e1e1e', borderRadius: 3, overflow: 'hidden' }}>
-                      <div style={{ height: '100%', background: 'var(--gold)', width: `${Math.min(100, (cur / needed) * 100)}%`, transition: 'width 0.4s' }} />
-                    </div>
-                    <div style={{ fontSize: 12, color: 'var(--gold)', marginTop: 5 }}>{cur} / {needed}</div>
-                  </div>
-                ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+                <div className="kicker" style={{ margin: 0 }}>Progress to {nextRank.name}</div>
+                <div style={{ fontSize: 11, color: 'var(--dim)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                  Qualifying leg: <span style={{ color: leftCount <= rightCount ? '#7ec8e3' : '#e3a87e', fontWeight: 700 }}>{qualifyingLeg}</span> / {nextRank.left}
+                </div>
               </div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 12 }}>
-                Achieving {nextRank.name} unlocks <strong style={{ color: 'var(--gold)' }}>{fmtR(nextRank.pool)}/month</strong>
-                {nextRank.bonus > 0 && <> + <strong style={{ color: 'var(--gold2)' }}>{fmtR(nextRank.bonus)} discretionary bonus</strong></>}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 14 }}>
+                {[['Left', leftCount, nextRank.left], ['Right', rightCount, nextRank.right]].map(([label, cur, needed]) => {
+                  const isWeaker = (label === 'Left' && leftCount <= rightCount) || (label === 'Right' && rightCount < leftCount);
+                  const pct = Math.min(100, (cur / needed) * 100);
+                  return (
+                    <div key={label} style={{ padding: '14px 16px', background: 'var(--dark3)', border: `1px solid ${isWeaker ? 'rgba(126,200,227,0.3)' : '#2a2a2a'}` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                        <div style={{ fontSize: 11, color: 'var(--muted)', letterSpacing: '0.14em', textTransform: 'uppercase' }}>
+                          {label} leg {isWeaker && <span style={{ color: '#7ec8e3', fontWeight: 700 }}>← focus here</span>}
+                        </div>
+                        <div style={{ fontFamily: 'var(--display)', fontSize: 20, color: cur >= needed ? '#4caf7a' : 'var(--gold)', fontWeight: 700 }}>
+                          {cur} <span style={{ fontSize: 13, color: 'var(--dim)' }}>/ {needed}</span>
+                        </div>
+                      </div>
+                      <div style={{ height: 6, background: '#1e1e1e', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ height: '100%', background: cur >= needed ? '#2d7a4f' : 'var(--gold)', width: `${pct}%`, transition: 'width 0.4s' }} />
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 6 }}>
+                        {cur >= needed
+                          ? '✓ Threshold met'
+                          : `${needed - cur} more needed`}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ background: 'var(--dark3)', borderLeft: '3px solid var(--gold)', padding: '12px 16px', fontSize: 12, color: 'var(--muted)', lineHeight: 1.7 }}>
+                <strong style={{ color: 'var(--white)' }}>Both legs must qualify.</strong>{' '}
+                Rank is set by your weaker leg — 9L / 10R = Silver, not Gold.
+                Achieving {nextRank.name} unlocks{' '}
+                <strong style={{ color: 'var(--gold)' }}>{fmtR(nextRank.pool)}/month pool earnings</strong>
+                {nextRank.bonus > 0 && <> + <strong style={{ color: 'var(--gold2)' }}>{fmtR(nextRank.bonus)} discretionary bonus</strong></>}.
               </div>
             </div>
           )}
@@ -552,31 +579,75 @@ export default function Dashboard() {
 
         {/* ═══ RANKS ══════════════════════════════════════ */}
         {tab === 'ranks' && (
-          <div className="card">
-            <div className="kicker" style={{ marginBottom: 14 }}>Your journey — 10 ranks</div>
-            <table className="ohmi-table">
-              <thead><tr><th>Rank</th><th>Left</th><th>Right</th><th>Pool PM</th><th>Disc. Bonus</th><th>Status</th></tr></thead>
-              <tbody>
-                {RANKS.map(r => {
-                  const achieved = leftCount >= r.left && rightCount >= r.right;
-                  const isCurrent = r.name === currentRank?.name;
-                  return (
-                    <tr key={r.name} style={{ background: isCurrent ? 'rgba(201,168,76,.05)' : undefined }}>
-                      <td style={{ fontWeight: 700, color: isCurrent ? 'var(--gold)' : 'var(--white)' }}>{r.name}</td>
-                      <td>{r.left.toLocaleString()}</td>
-                      <td>{r.right.toLocaleString()}</td>
-                      <td style={{ color: 'var(--gold)', fontWeight: 700 }}>R{r.pool.toLocaleString()}</td>
-                      <td style={{ color: r.bonus > 0 ? 'var(--gold2)' : 'var(--dim)' }}>{r.bonus > 0 ? `R${r.bonus.toLocaleString()}` : '—'}</td>
-                      <td>
-                        {isCurrent ? <span className="pill pill-gold">Current</span>
-                          : achieved ? <span className="pill pill-green">Achieved</span>
-                          : <span className="pill pill-grey">Locked</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+          <div>
+            {/* Weaker leg explainer */}
+            <div className="card" style={{ marginBottom: 16, borderLeft: '3px solid var(--gold)', padding: '16px 20px' }}>
+              <div style={{ fontFamily: 'var(--display)', fontSize: 18, color: 'var(--gold)', marginBottom: 6 }}>
+                Rank is set by your weaker leg.
+              </div>
+              <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.8 }}>
+                Both legs must independently hit the threshold. 9L / 10R qualifies as Silver (5/5), not Gold (20/20).
+                Your current qualifying leg is <strong style={{ color: 'var(--white)' }}>{qualifyingLeg}</strong> — 
+                focus on your <strong style={{ color: '#7ec8e3' }}>{weakerLeg} leg</strong> to advance.
+              </p>
+            </div>
+
+            <div className="card">
+              <div className="kicker" style={{ marginBottom: 14 }}>Your journey — 10 ranks</div>
+              <table className="ohmi-table">
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Each leg needs</th>
+                    <th>Your left</th>
+                    <th>Your right</th>
+                    <th>Pool PM</th>
+                    <th>Disc. Bonus</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {RANKS.map(r => {
+                    const achieved = qualifyingLeg >= r.left;
+                    const isCurrent = r.name === currentRank?.name;
+                    const leftMet = leftCount >= r.left;
+                    const rightMet = rightCount >= r.right;
+                    return (
+                      <tr key={r.name} style={{ background: isCurrent ? 'rgba(201,168,76,.06)' : undefined }}>
+                        <td style={{ fontWeight: 700, color: isCurrent ? 'var(--gold)' : achieved ? 'var(--white)' : 'var(--dim)' }}>
+                          {r.name}
+                        </td>
+                        <td style={{ fontWeight: 700, color: 'var(--muted)' }}>
+                          {r.left.toLocaleString()} / {r.right.toLocaleString()}
+                        </td>
+                        <td style={{ color: leftMet ? '#4caf7a' : 'var(--dim)', fontWeight: leftMet ? 700 : 400 }}>
+                          {leftCount} {leftMet ? '✓' : ''}
+                        </td>
+                        <td style={{ color: rightMet ? '#4caf7a' : 'var(--dim)', fontWeight: rightMet ? 700 : 400 }}>
+                          {rightCount} {rightMet ? '✓' : ''}
+                        </td>
+                        <td style={{ color: isCurrent || achieved ? 'var(--gold)' : 'var(--dim)', fontWeight: 700 }}>
+                          R{r.pool.toLocaleString()}
+                        </td>
+                        <td style={{ color: r.bonus > 0 ? (isCurrent || achieved ? 'var(--gold2)' : 'var(--dim)') : 'var(--dim)' }}>
+                          {r.bonus > 0 ? `R${r.bonus.toLocaleString()}` : '—'}
+                        </td>
+                        <td>
+                          {isCurrent
+                            ? <span className="pill pill-gold">Current</span>
+                            : achieved
+                            ? <span className="pill pill-green">Achieved</span>
+                            : <span className="pill pill-grey">Locked</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <p style={{ fontSize: 11, color: 'var(--dim)', marginTop: 14, lineHeight: 1.7 }}>
+                Pool PM = your pro-rated share of the 30% binary pool based on your rank. Disc. bonus = paid from OHMI 70% retention at admin discretion. Ref: OHMI-ACT-2026-002.
+              </p>
+            </div>
           </div>
         )}
 
