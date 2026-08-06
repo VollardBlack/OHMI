@@ -1,0 +1,163 @@
+:root {
+  --ink: #181008;          /* espresso ink */
+  --paper: #f6efe4;        /* crema paper */
+  --paper-deep: #ede2d0;
+  --copper: #c08a3e;       /* burnished copper-gold */
+  --copper-dark: #96682a;
+  --roast: #4a2f1b;        /* medium roast brown */
+  --muted: #7a6a55;
+  --display: 'Fraunces', Georgia, serif;
+  --utility: 'Space Grotesk', Arial, sans-serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--utility);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, .display { font-family: var(--display); }
+
+a { color: inherit; text-decoration: none; }
+
+.container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+
+/* ---------- Header ---------- */
+.site-header {
+  border-bottom: 1px solid var(--ink);
+  background: var(--paper);
+  position: sticky; top: 0; z-index: 50;
+}
+.site-header .container {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 68px;
+}
+.wordmark {
+  font-family: var(--display);
+  font-weight: 900; font-size: 22px; letter-spacing: 0.02em;
+}
+.wordmark span { color: var(--copper); }
+.nav { display: flex; gap: 28px; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; }
+.nav a { border-bottom: 2px solid transparent; padding-bottom: 4px; }
+.nav a:hover, .nav a.active { border-color: var(--copper); }
+
+/* ---------- Hero ---------- */
+.hero {
+  background: var(--ink); color: var(--paper);
+  padding: 96px 0 88px;
+  position: relative; overflow: hidden;
+}
+.hero .eyebrow {
+  font-size: 12px; letter-spacing: 0.3em; text-transform: uppercase;
+  color: var(--copper); margin-bottom: 20px;
+}
+.hero h1 {
+  font-size: clamp(44px, 7vw, 88px);
+  font-weight: 900; line-height: 0.98; letter-spacing: -0.01em;
+  max-width: 14ch;
+}
+.hero h1 em { font-style: italic; font-weight: 300; color: var(--copper); }
+.hero p.lede {
+  margin-top: 28px; max-width: 52ch; font-size: 17px; line-height: 1.65;
+  color: #cdbfa9;
+}
+.hero .cta-row { margin-top: 40px; display: flex; gap: 16px; flex-wrap: wrap; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--utility); font-weight: 700; font-size: 13px;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 16px 28px; border: 1px solid var(--copper);
+  cursor: pointer; transition: all .2s ease;
+  background: transparent; color: inherit;
+}
+.btn.primary { background: var(--copper); color: var(--ink); }
+.btn.primary:hover { background: var(--paper); border-color: var(--paper); }
+.btn.ghost:hover { background: rgba(192,138,62,.12); }
+
+/* ---------- Roast meter (signature) ---------- */
+.roast-meter {
+  display: flex; gap: 6px; align-items: flex-end; height: 26px; margin-top: 56px;
+}
+.roast-meter i {
+  width: 26px; background: var(--copper); display: block;
+  animation: roastRise .9s cubic-bezier(.2,.7,.2,1) both;
+}
+@keyframes roastRise { from { height: 0 } }
+.roast-meter i:nth-child(1){height:20%} .roast-meter i:nth-child(2){height:40%}
+.roast-meter i:nth-child(3){height:60%} .roast-meter i:nth-child(4){height:85%}
+.roast-meter i:nth-child(5){height:100%}
+.roast-label { font-size: 11px; letter-spacing: .25em; text-transform: uppercase; color: var(--muted); margin-top: 10px; }
+.hero .roast-label { color: #8f7f66; }
+
+/* ---------- Sections ---------- */
+.section { padding: 88px 0; }
+.section .kicker {
+  font-size: 12px; letter-spacing: .28em; text-transform: uppercase;
+  color: var(--copper-dark); margin-bottom: 14px;
+}
+.section h2 { font-size: clamp(30px,4.2vw,48px); font-weight: 700; line-height: 1.05; }
+
+/* ---------- Product grid ---------- */
+.product-grid {
+  margin-top: 48px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 28px;
+}
+.product-card {
+  border: 1px solid var(--ink); background: var(--paper);
+  display: flex; flex-direction: column;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.product-card:hover { transform: translateY(-4px); box-shadow: 8px 8px 0 var(--copper); }
+.product-visual {
+  aspect-ratio: 4/3; background: var(--ink); position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.product-visual .bag {
+  font-family: var(--display); font-weight: 900; color: var(--copper);
+  font-size: 40px; letter-spacing: .02em;
+}
+.product-visual .origin-tag {
+  position: absolute; top: 14px; left: 14px;
+  font-size: 10px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--paper); border: 1px solid var(--copper); padding: 5px 9px;
+}
+.product-body { padding: 22px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+.product-body h3 { font-size: 22px; font-weight: 700; }
+.product-body .notes { font-size: 14px; color: var(--muted); line-height: 1.6; flex: 1; }
+.product-foot {
+  display: flex; align-items: center; justify-content: space-between; margin-top: 6px;
+}
+.price { font-family: var(--display); font-weight: 900; font-size: 24px; }
+.price small { font-family: var(--utility); font-weight: 500; font-size: 12px; color: var(--muted); }
+
+/* ---------- Impact strip ---------- */
+.impact {
+  background: var(--roast); color: var(--paper); padding: 64px 0;
+}
+.impact .container { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center; }
+.impact h2 { color: var(--copper); }
+.impact p { line-height: 1.7; color: #e6d9c4; }
+@media (max-width: 800px){ .impact .container { grid-template-columns: 1fr; } }
+
+/* ---------- Footer ---------- */
+.site-footer {
+  background: var(--ink); color: #8f7f66; padding: 48px 0;
+  font-size: 13px;
+}
+.site-footer .container { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 20px; }
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  background: var(--ink); color: var(--paper); border: 1px solid var(--copper);
+  padding: 14px 24px; font-size: 13px; letter-spacing: .06em; z-index: 100;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .roast-meter i { animation: none; }
+  .product-card, .btn { transition: none; }
+}
