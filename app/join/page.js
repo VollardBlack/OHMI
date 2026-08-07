@@ -92,7 +92,7 @@ export default function Join() {
         </div>
       </header>
 
-      <section style={{ background: 'var(--maroon)', borderBottom: '1px solid #1e1e1e', padding: '60px 0 48px' }}>
+      <section style={{ background: 'var(--primary)', borderBottom: '1px solid #1e1e1e', padding: '60px 0 48px' }}>
         <div className="container">
           <div className="kicker">Join OHMI Coffee Co.</div>
           <h1 className="section-title" style={{ maxWidth: '18ch' }}>
@@ -172,7 +172,7 @@ export default function Join() {
                   ['Imperial Diamond', '5,000/5,000', 'R1,500,000 PM'],
                 ].map(([rank, req, earn]) => (
                   <div key={rank} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #1e1e1e', fontSize: 12 }}>
-                    <span style={{ color: 'var(--gold)', fontWeight: 700, minWidth: 120 }}>{rank}</span>
+                    <span style={{ color: 'var(--amber)', fontWeight: 700, minWidth: 120 }}>{rank}</span>
                     <span style={{ color: 'var(--text-muted)', minWidth: 60, textAlign: 'center' }}>{req}</span>
                     <span style={{ color: 'var(--text-h)', textAlign: 'right', fontSize: 11 }}>{earn}</span>
                   </div>
@@ -198,15 +198,15 @@ export default function Join() {
               </p>
               <div style={{ background: 'var(--surface-2)', padding: 16, marginBottom: 20, borderLeft: '3px solid var(--gold)' }}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6, letterSpacing: '0.14em', textTransform: 'uppercase' }}>Your member ID</div>
-                <div style={{ fontFamily: 'var(--display)', fontSize: 18, color: 'var(--gold)', wordBreak: 'break-all' }}>{memberId}</div>
+                <div style={{ fontFamily: 'var(--display)', fontSize: 18, color: 'var(--amber)', wordBreak: 'break-all' }}>{memberId}</div>
                 <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>Save this — share it as your referral code.</div>
               </div>
               <div style={{ background: 'var(--surface-2)', padding: 16, marginBottom: 24, borderLeft: '3px solid #333' }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.8 }}>
                   <strong style={{ color: 'var(--text-h)' }}>Payment details</strong><br />
                   Bank: FNB · Account: OHMI Coffee Co. (Pty) Ltd<br />
-                  Amount: <strong style={{ color: 'var(--gold)' }}>R2,500</strong><br />
-                  Reference: <strong style={{ color: 'var(--gold)' }}>{memberId?.slice(0, 8)?.toUpperCase()}</strong><br />
+                  Amount: <strong style={{ color: 'var(--amber)' }}>R2,500</strong><br />
+                  Reference: <strong style={{ color: 'var(--amber)' }}>{memberId?.slice(0, 8)?.toUpperCase()}</strong><br />
                   <span style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4, display: 'block' }}>
                     Send proof of payment to activate@ohmicoffee.co.za
                   </span>
@@ -218,7 +218,7 @@ export default function Join() {
         </section>
       )}
 
-      <footer style={{ background: 'var(--maroon)', borderTop: '1px solid #1e1e1e', padding: '28px 0' }}>
+      <footer style={{ background: 'var(--primary)', borderTop: '1px solid #1e1e1e', padding: '28px 0' }}>
         <div className="container" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.1em' }}>
           <span>© {new Date().getFullYear()} OHMI COFFEE CO. (PTY) LTD</span>
           <span>COMMISSION ON PRODUCT SALES ONLY — CPA S43 COMPLIANT</span>
