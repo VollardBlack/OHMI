@@ -99,6 +99,7 @@ export default function Dashboard() {
   const [sub,setSub] = useState(null);
   const [packages,setPackages] = useState([]);
   const [pkgOrders,setPkgOrders] = useState([]);
+  const [shopProducts,setShopProducts] = useState([]);
   const [cart,setCart] = useState({});
   const [checkoutStep,setCheckoutStep] = useState('browse');
   const [busy,setBusy] = useState('');
@@ -108,13 +109,14 @@ export default function Dashboard() {
   const flash = m=>{setToast(m);setTimeout(()=>setToast(''),3000);};
 
   async function load() {
-    const [m,n,l,s,p,po,ll]=await Promise.all([
+    const [m,n,l,s,p,po,ll,pr]=await Promise.all([
       supabase.from('members').select('*').order('member_number'),
       supabase.from('network_nodes').select('*'),
       supabase.from('commission_ledger').select('*').order('created_at',{ascending:false}),
       supabase.from('subscriptions').select('*'),
       supabase.from('packages').select('*').eq('active',true).order('sort_order'),
       supabase.from('package_orders').select('*').order('created_at',{ascending:false}),
+      supabase.from('products').select('*').eq('status','active').order('sort_order'),
       supabase.from('lifestyle_ledger').select('*').order('created_at',{ascending:false}),
     ]);
     setMembers(m.data||[]);setNodes(n.data||[]);setLedger(l.data||[]);
@@ -142,9 +144,10 @@ export default function Dashboard() {
   const ptBal=myLife.filter(l=>['rank_bonus','adjustment'].includes(l.entry_type)).reduce((s,l)=>s+Number(l.points),0)
     -myLife.filter(l=>['redemption','expiry'].includes(l.entry_type)).reduce((s,l)=>s+Number(l.points),0);
 
-  const cartItems=packages.filter(p=>cart[p.id]>0).map(p=>({...p,qty:cart[p.id]}));
-  const cartTotal=cartItems.reduce((s,i)=>s+Number(i.price)*i.qty,0);
-  const cartPool=cartItems.reduce((s,i)=>s+Number(i.pool_contribution)*i.qty,0);
+  const allShopItems=[...packages,...shopProducts];
+  const cartItems=allShopItems.filter(p=>cart[p.id]>0).map(p=>({...p,qty:cart[p.id]}));
+  const cartTotal=cartItems.reduce((s,i)=>s+(me?.status==='active'?Number(i.price_member||i.price):Number(i.price_retail||i.price))*i.qty,0);
+  const cartPool=cartItems.reduce((s,i)=>s+Number(i.pool_contribution||0)*i.qty,0);
   const cartQty=cartItems.reduce((s,i)=>s+i.qty,0);
   const addCart=(id,d)=>setCart(c=>({...c,[id]:Math.max(0,(c[id]||0)+d)}));
   const myOrders=pkgOrders.filter(o=>me&&o.member_id===me.id);
@@ -154,7 +157,7 @@ export default function Dashboard() {
     if(!me||!cartItems.length)return;
     setBusy('order');
     const period=new Date().toISOString().slice(0,7)+'-01';
-    await supabase.from('package_orders').insert(cartItems.map(i=>({member_id:me.id,package_id:i.id,quantity:i.qty,total:Number(i.price)*i.qty,pool_contribution:Number(i.pool_contribution)*i.qty,status:'pending',billing_period:period})));
+    await supabase.from('package_orders').insert(cartItems.map(i=>({member_id:me.id,package_id:i.id,quantity:i.qty,total:(me?.status==='active'?Number(i.price_member||i.price):Number(i.price_retail||i.price))*i.qty,pool_contribution:Number(i.pool_contribution||0)*i.qty,status:'pending',billing_period:period})));
     setCart({});setBusy('');setCheckoutStep('done');
     const {data}=await supabase.from('package_orders').select('*').order('created_at',{ascending:false});
     setPkgOrders(data||[]);
@@ -384,42 +387,49 @@ export default function Dashboard() {
             {/* ── SHOP ── */}
             {tab==='shop'&&<>
               {checkoutStep==='browse'&&<>
-                <div>
-                  <div className="section-title" style={{marginBottom:4}}>Additional coffee & products</div>
-                  <p style={{fontSize:13,color:'var(--text-muted)',marginBottom:16}}>Extra orders beyond your monthly subscription — each purchase contributes to the binary pool.</p>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
+                  <div>
+                    <div className="section-title">Single Origin Coffees</div>
+                    <p style={{fontSize:13,color:'var(--text-muted)',marginTop:2}}>All 1kg · 100% Arabica · Retail R385 · Member R365</p>
+                  </div>
+                  {cartQty>0&&<span className="pill pill-primary">{cartQty} in cart</span>}
                 </div>
-                <div className="pkg-grid">
-                  {packages.map((pkg,idx)=>{
-                    const qty=cart[pkg.id]||0;
-                    const inc=Array.isArray(pkg.includes)?pkg.includes:JSON.parse(pkg.includes||'[]');
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14}}>
+                  {shopProducts.map(p=>{
+                    const qty=cart[p.id]||0;
+                    const price=me?.status==='active'?Number(p.price_member):Number(p.price_retail);
                     return(
-                      <div key={pkg.id} className={`pkg-card${qty>0?' selected':''}`}>
-                        <div className={`pkg-header ${PKG_GRADS[idx%PKG_GRADS.length]}`}>
-                          <div className="pkg-size">{pkg.coffee_kg<1?`${pkg.coffee_kg*1000}g`:`${pkg.coffee_kg}kg`}</div>
-                          <div className="pkg-origin">Uganda Bugisu AA</div>
-                          {pkg.badge&&<div className="pkg-badge-wrap"><span className="pkg-badge">{pkg.badge}</span></div>}
-                        </div>
-                        <div className="pkg-body">
-                          <div className="pkg-name">{pkg.name}</div>
-                          <div className="pkg-tag">{pkg.tagline}</div>
-                          <div className="pkg-includes">
-                            {inc.slice(0,3).map((item,i)=>(
-                              <div key={i} className="pkg-include-row">
-                                <span className="pkg-include-tick">✓</span>
-                                <span className="pkg-include-text">{item}</span>
-                              </div>
-                            ))}
+                      <div key={p.id} className={`pkg-card${qty>0?' selected':''}`} style={{borderRadius:'var(--r)',overflow:'hidden',display:'flex',flexDirection:'column'}}>
+                        {/* Product image */}
+                        <div style={{position:'relative',height:220,overflow:'hidden',background:'#111'}}>
+                          {p.image_url?(
+                            <img src={p.image_url} alt={p.name}
+                              style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 20%',transition:'transform 0.3s'}}
+                              onMouseEnter={e=>e.target.style.transform='scale(1.04)'}
+                              onMouseLeave={e=>e.target.style.transform=''}/>
+                          ):(
+                            <div style={{width:'100%',height:'100%',background:'linear-gradient(135deg,#6366F1,#0EA5E9)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:40}}>☕</div>
+                          )}
+                          {qty>0&&<div style={{position:'absolute',top:10,right:10,width:28,height:28,borderRadius:'50%',background:'var(--primary)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,boxShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{qty}</div>}
+                          <div style={{position:'absolute',bottom:0,left:0,right:0,background:'linear-gradient(transparent,rgba(0,0,0,0.7))',padding:'24px 12px 10px'}}>
+                            <div style={{fontSize:14,fontWeight:800,color:'#fff',letterSpacing:'-0.01em'}}>{p.name}</div>
                           </div>
-                          <div className="pkg-pool"><span className="pkg-pool-label">Pool contribution</span><span className="pkg-pool-val">{Rz(pkg.pool_contribution)}</span></div>
-                          <div className="pkg-footer">
-                            <span className="pkg-price">{Rz(pkg.price)}</span>
+                        </div>
+                        {/* Info */}
+                        <div style={{padding:'12px 14px',flex:1,display:'flex',flexDirection:'column',gap:8}}>
+                          <p style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.6,flex:1,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{p.description}</p>
+                          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                            <div>
+                              <span style={{fontSize:20,fontWeight:800,color:'var(--text-h)',letterSpacing:'-0.02em'}}>R{price}</span>
+                              {me?.status==='active'&&<span style={{fontSize:10,color:'var(--green-text)',fontWeight:600,marginLeft:5}}>member price</span>}
+                            </div>
                             {qty>0?(
-                              <div className="pkg-qty">
-                                <button className="qty-btn" onClick={()=>addCart(pkg.id,-1)}>−</button>
+                              <div style={{display:'flex',alignItems:'center',gap:8}}>
+                                <button className="qty-btn" onClick={()=>addCart(p.id,-1)}>−</button>
                                 <span className="qty-num">{qty}</span>
-                                <button className="qty-btn" onClick={()=>addCart(pkg.id,1)}>+</button>
+                                <button className="qty-btn" onClick={()=>addCart(p.id,1)}>+</button>
                               </div>
-                            ):<button className="btn btn-primary btn-xs" onClick={()=>addCart(pkg.id,1)}>Add</button>}
+                            ):<button className="btn btn-primary btn-xs" onClick={()=>addCart(p.id,1)}>Add</button>}
                           </div>
                         </div>
                       </div>
