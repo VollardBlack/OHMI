@@ -25,6 +25,87 @@ const fmtD = d => d ? new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', 
 
 // ── Profit Calculator ────────────────────────────────────────────────────────
 function ProfitCalc() {
+  // Two modes: subscription (pool feeds binary) and retail (single bags)
+  const [mode, setMode] = useState('subscription');
+
+  // Retail products by tier
+  const RETAIL = [
+    { id:'conv',    name:'Conventional (Uganda/Ethiopia/Burundi)', greenKg:153.50, retail:385, member:365 },
+    { id:'mid',     name:'Mid-tier (Guatemala/Honduras)',          greenKg:157.50, retail:385, member:365 },
+    { id:'pro',     name:'Pro Series (Kenya/Rwanda)',              greenKg:167.50, retail:420, member:399 },
+    { id:'premium', name:'Premium (Colombia/Nicaragua/Infused)',   greenKg:176.50, retail:440, member:419 },
+  ];
+  const [selRetail, setSelRetail] = useState('conv');
+
+  // Editable costs (real numbers from suppliers)
+  const [c, setC] = useState({
+    weightFactor: 1.20,   // 1.2kg green → 1kg roasted
+    roasting:    27.50,   // Wiara contract roasting <100kg
+    bag:          8.00,   // 1kg flat bottom bag with valve
+    label:        3.00,   // OHMI branded label
+    foundation:  15.00,   // Bitou Foundation per kg
+    grind:        3.00,   // optional grind cost
+    shipping:    95.00,   // Courier Guy national (customer pays)
+    subPrice:  1500.00,   // monthly subscription
+    subPool:    500.00,   // pool contribution per subscription
+    activation: 2500.00,  // once-off registration fee
+    actSponsor:  500.00,  // sponsor commission on activation
+    actPool:     500.00,  // pool contribution from activation
+  });
+  const set = (k,v) => setC(prev=>({...prev,[k]:parseFloat(v)||0}));
+
+  const R = n => `R${Number(n).toFixed(2)}`;
+
+  // ── SUBSCRIPTION MODEL ──
+  const coffeeCOGS  = c.weightFactor * (RETAIL.find(r=>r.id==='conv').greenKg) + c.roasting + c.bag + c.label + c.foundation;
+  const subRevenue  = c.subPrice - c.subPool;        // what OHMI keeps before COGS
+  const subProfit   = subRevenue - coffeeCOGS;        // pure profit on subscription
+  const poolToReps  = c.subPool * 0.30;               // 30% to reps
+  const poolToOhmi  = c.subPool * 0.70;               // 70% retention
+  const ohmiPerSub  = subProfit + poolToOhmi;         // total OHMI take per subscription
+
+  // ── RETAIL MODEL ──
+  const rt          = RETAIL.find(r=>r.id===selRetail);
+  const rtBeanCost  = rt.greenKg * c.weightFactor;
+  const rtCOGS      = rtBeanCost + c.roasting + c.bag + c.label + c.foundation;
+  const rtMargin    = rt.retail - rtCOGS;
+  const rtMarginPct = (rtMargin / rt.retail * 100).toFixed(1);
+  const rtMemberMargin = rt.member - rtCOGS;
+
+  // ── ACTIVATION ECONOMICS ──
+  const actOhmi     = c.activation - c.actSponsor - c.actPool;
+
+  // ── SCALE MODEL ──
+  const [members, setMembers] = useState(50);
+  const scalePool   = members * c.subPool;
+  const scaleReps   = scalePool * 0.30;
+  const scaleOhmi   = members * ohmiPerSub;
+  const scaleBinary = scalePool * 0.30;
+
+  const Row = ({label, val, sub, color}) => (
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
+      <div>
+        <div style={{fontSize:12,color:'rgba(255,255,255,0.6)'}}>{label}</div>
+        {sub&&<div style={{fontSize:10,color:'rgba(255,255,255,0.35)',marginTop:2}}>{sub}</div>}
+      </div>
+      <div style={{fontSize:16,fontWeight:800,color:color||'#fff',letterSpacing:'-0.01em'}}>{val}</div>
+    </div>
+  );
+
+  const EditRow = ({label, field, hint}) => (
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'9px 14px',background:'var(--white)',borderRadius:'var(--r-xs)',border:'1px solid var(--border)',boxShadow:'var(--shadow-xs)',marginBottom:3}}>
+      <div>
+        <div style={{fontSize:13,color:'var(--text-sub)'}}>{label}</div>
+        {hint&&<div style={{fontSize:10,color:'var(--text-dim)',marginTop:1}}>{hint}</div>}
+      </div>
+      <div style={{display:'flex',alignItems:'center',gap:4}}>
+        <span style={{fontSize:12,color:'var(--text-muted)'}}>R</span>
+        <input type="number" step="0.01" value={c[field]} onChange={e=>set(field,e.target.value)}
+          style={{width:80,padding:'4px 8px',border:'1.5px solid var(--border-md)',borderRadius:'var(--r-xs)',fontSize:13,fontWeight:600,textAlign:'right',outline:'none',fontFamily:'inherit'}}/>
+      </div>
+    </div>
+  );
+
   const PKGS = [
     { id: 'starter', name: 'Starter Pack', kg: 0.25, retail: 1500, pool: 500 },
     { id: 'builder', name: 'Builder Pack', kg: 1,    retail: 1500, pool: 500 },
@@ -42,146 +123,199 @@ function ProfitCalc() {
   });
   const [overrides, setOverrides] = useState({});
 
-  const pkg = PKGS.find(p => p.id === sel);
-  const c = { ...costs, ...overrides };
-
-  const costPerKg = c.greenBeans + c.roasting;
-  const coffeeCost = costPerKg * pkg.kg;
-  const packCost   = c.packaging * (pkg.kg >= 1 ? pkg.kg : 1);
-  const foundCost  = c.foundation * pkg.kg;
-  const delivCost  = c.delivery;
-  const totalCost  = coffeeCost + packCost + foundCost + delivCost;
-  const repPool    = pkg.pool * 0.30;
-  const ohmiPool   = pkg.pool * 0.70;
-  const netRevenue = pkg.retail - pkg.pool;
-  const grossProfit = netRevenue - totalCost;
-  const marginPct  = ((grossProfit / pkg.retail) * 100);
-  const ohmiTotal  = grossProfit + ohmiPool;
-
-  const row = (label, val, editable, key) => (
-    <div className="calc-row" key={label}>
-      <span className="calc-row-label">{label}</span>
-      {editable ? (
-        <input className="calc-row-input" type="number" step="0.01"
-          value={overrides[key] ?? costs[key]}
-          onChange={e => setOverrides(o => ({ ...o, [key]: parseFloat(e.target.value)||0 }))}
-        />
-      ) : (
-        <span className="calc-row-val">{val}</span>
-      )}
-    </div>
-  );
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Package selector */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        {PKGS.map(p => (
-          <button key={p.id}
-            className={`btn btn-sm ${sel===p.id ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => { setSel(p.id); setOverrides({}); }}>
-            {p.name}
+    <div style={{display:'flex',flexDirection:'column',gap:16}}>
+      {/* Mode tabs */}
+      <div style={{display:'flex',background:'var(--white)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'var(--shadow-sm)'}}>
+        {[['subscription','📦 Subscription Model'],['retail','🛍 Retail Bags'],['activation','🚀 Activation Economics'],['scale','📈 Scale Model']].map(([id,label])=>(
+          <button key={id} onClick={()=>setMode(id)} style={{flex:1,padding:'12px 8px',background:mode===id?'var(--primary)':'transparent',color:mode===id?'#fff':'var(--text-muted)',border:'none',fontFamily:'var(--font)',fontSize:11,fontWeight:700,cursor:'pointer',letterSpacing:'0.04em'}}>
+            {label}
           </button>
         ))}
       </div>
 
-      <div className="calc-grid">
+      {/* ── SUBSCRIPTION ── */}
+      {mode==='subscription'&&<div style={{display:'grid',gridTemplateColumns:'1fr 300px',gap:16,alignItems:'start'}}>
         <div>
-          <div className="section-label" style={{ marginBottom: 12 }}>Cost inputs — editable</div>
-          <div className="calc-inputs">
-            {row('Green beans (Uganda Bugisu AA)', null, true, 'greenBeans')}
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '2px 14px' }}>per kg · from Green Coffee Supply</div>
-            {row('Roasting cost', null, true, 'roasting')}
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '2px 14px' }}>per kg · Wiara Coffee (under 100kg rate)</div>
-            {row('Packaging (per bag)', null, true, 'packaging')}
-            {row('Foundation allocation', null, true, 'foundation')}
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '2px 14px' }}>per kg · Bitou region</div>
-            {row('Delivery estimate', null, true, 'delivery')}
-            <div style={{ height: 1, background: 'var(--border)', margin: '6px 0' }} />
-            {row(`Coffee cost (${pkg.kg}kg × R${c.greenBeans+c.roasting})`, `R${coffeeCost.toFixed(2)}`, false)}
-            {row('Packaging total', `R${packCost.toFixed(2)}`, false)}
-            {row('Foundation total', `R${foundCost.toFixed(2)}`, false)}
-            {row('Delivery', `R${delivCost.toFixed(2)}`, false)}
-            <div style={{ height: 1, background: 'var(--border)', margin: '6px 0' }} />
-            {row('Total cost of goods', `R${totalCost.toFixed(2)}`, false)}
-            {row('Retail price', fmtR(pkg.retail), false)}
-            {row('Pool contribution (total)', fmtR(pkg.pool), false)}
-            <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '2px 14px' }}>
-              → Rep share (30%): {fmtR(repPool)} · OHMI retention (70%): {fmtR(ohmiPool)}
-            </div>
-            {row('Net revenue (retail − pool)', `R${netRevenue.toFixed(2)}`, false)}
-          </div>
-        </div>
-
-        <div className="calc-result">
-          <div style={{ fontSize: 11, color: 'var(--amber)', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
-            {pkg.name}
-          </div>
-
-          <div className="calc-result-item">
-            <span className="calc-result-label">Gross profit</span>
-            <span className="calc-result-val" style={{ color: grossProfit > 0 ? 'var(--amber)' : 'var(--red)' }}>
-              {fmtR(Math.round(grossProfit))}
-            </span>
-            <span className="calc-result-sub">per unit after COGS</span>
-          </div>
-
-          <div className="calc-divider" />
-
-          <div className="calc-result-item">
-            <span className="calc-result-label">Margin %</span>
-            <span className="calc-result-val" style={{ color: marginPct > 0 ? 'var(--amber)' : 'var(--red)', fontSize: 32 }}>
-              {Math.round(marginPct)}%
-            </span>
-            <span className="calc-result-sub">of retail price</span>
-          </div>
-
-          <div className="calc-divider" />
-
-          <div className="calc-result-item">
-            <span className="calc-result-label">OHMI total take</span>
-            <span className="calc-result-val" style={{ fontSize: 22 }}>{fmtR(Math.round(ohmiTotal))}</span>
-            <span className="calc-result-sub">gross profit + 70% pool retention</span>
-          </div>
-
-          <div className="calc-divider" />
-
-          <div className="calc-result-item">
-            <span className="calc-result-label">OHMI min. guaranteed</span>
-            <span className="calc-result-val" style={{ fontSize: 22, color: 'var(--green)' }}>{fmtR(Math.round(ohmiPool))}</span>
-            <span className="calc-result-sub">from pool retention alone</span>
-          </div>
-
-          <div className="calc-divider" />
-
-          <div style={{ padding: '10px 0' }}>
-            <div className="calc-result-label" style={{ marginBottom: 6 }}>Breakeven (units)</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {[10,50,100].map(u => (
-                <div key={u} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span style={{ color: 'var(--text-dim)' }}>{u} units</span>
-                  <span style={{ color: 'var(--amber)', fontWeight: 500 }}>{fmtR(Math.round(ohmiTotal * u))}</span>
+          <div className="section-label" style={{marginBottom:12}}>Cost inputs (all editable)</div>
+          <div style={{display:'flex',flexDirection:'column',gap:3}}>
+            <EditRow label="Green bean price/kg (Uganda Bugisu AA)" field="greenBeans" hint="Green Coffee Supply · R153.50/kg excl VAT"/>
+            <EditRow label="Weight factor" field="weightFactor" hint="1.20 = 1.2kg green makes 1kg roasted (20% loss)"/>
+            <EditRow label="Roasting cost/kg" field="roasting" hint="Wiara Coffee Roasters · R27.50/kg (under 100kg)"/>
+            <EditRow label="Bag cost (1kg flat bottom + valve)" field="bag" hint="Wiara catalogue · R8.00 each"/>
+            <EditRow label="Label cost" field="label" hint="OHMI branded label · ~R3.00"/>
+            <EditRow label="Foundation allocation/kg" field="foundation" hint="Bitou Foundation commitment · R15.00/kg"/>
+            <div style={{padding:'10px 14px',background:'var(--surface-1)',borderRadius:'var(--r-sm)',border:'1px solid var(--border)',marginTop:6}}>
+              <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:8,letterSpacing:'0.08em',textTransform:'uppercase'}}>Calculated COGS per 1kg bag</div>
+              {[
+                [`Green beans (R${(RETAIL[0]?.greenKg||153.5).toFixed(2)} × ${c.weightFactor})`, `R${(RETAIL[0]?.greenKg||153.5 * c.weightFactor).toFixed(2)}`],
+                ['Roasting', `R${c.roasting.toFixed(2)}`],
+                ['Bag', `R${c.bag.toFixed(2)}`],
+                ['Label', `R${c.label.toFixed(2)}`],
+                ['Foundation', `R${c.foundation.toFixed(2)}`],
+              ].map(([l,v])=>(
+                <div key={l} style={{display:'flex',justifyContent:'space-between',fontSize:12,padding:'4px 0',borderBottom:'1px solid var(--border)'}}>
+                  <span style={{color:'var(--text-sub)'}}>{l}</span><span style={{fontWeight:600}}>{v}</span>
                 </div>
               ))}
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:14,fontWeight:800,padding:'8px 0 0',color:'var(--text-h)'}}>
+                <span>Total COGS</span><span style={{color:'var(--red-text)'}}>R{coffeeCOGS.toFixed(2)}</span>
+              </div>
+            </div>
+            <div style={{height:1,background:'var(--border)',margin:'6px 0'}}/>
+            <EditRow label="Monthly subscription price" field="subPrice" hint="Member pays this monthly"/>
+            <EditRow label="Pool contribution/subscription" field="subPool" hint="Feeds binary tree — R500 standard"/>
+          </div>
+        </div>
+        <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',borderRadius:'var(--r)',padding:20,display:'flex',flexDirection:'column',gap:12}}>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(255,255,255,0.6)'}}>Subscription P&L per member/month</div>
+          <Row label="Subscription revenue" val={`R${c.subPrice.toFixed(2)}`}/>
+          <Row label="Pool contribution out" val={`-R${c.subPool.toFixed(2)}`} color="rgba(255,255,255,0.7)"/>
+          <Row label="Net revenue" val={`R${subRevenue.toFixed(2)}`}/>
+          <Row label="Coffee COGS" val={`-R${coffeeCOGS.toFixed(2)}`} color="rgba(255,255,255,0.7)"/>
+          <div style={{height:1,background:'rgba(255,255,255,0.15)'}}/>
+          <Row label="Gross profit" val={`R${subProfit.toFixed(2)}`} color={subProfit>0?'#86efac':'#fca5a5'}/>
+          <div style={{height:1,background:'rgba(255,255,255,0.15)'}}/>
+          <Row label="Pool → reps (30%)" val={`R${poolToReps.toFixed(2)}`} color="rgba(255,255,255,0.7)" sub="distributed by binary rank"/>
+          <Row label="Pool → OHMI (70%)" val={`R${poolToOhmi.toFixed(2)}`} sub="operations + foundation"/>
+          <div style={{height:1,background:'rgba(255,255,255,0.15)'}}/>
+          <div style={{padding:'12px',background:'rgba(0,0,0,0.2)',borderRadius:'var(--r-sm)'}}>
+            <div style={{fontSize:10,color:'rgba(255,255,255,0.6)',marginBottom:4}}>OHMI TOTAL PER MEMBER/MONTH</div>
+            <div style={{fontSize:32,fontWeight:800,color:'#fff',letterSpacing:'-0.02em'}}>R{ohmiPerSub.toFixed(2)}</div>
+            <div style={{fontSize:11,color:'rgba(255,255,255,0.5)',marginTop:2}}>profit + pool retention</div>
+          </div>
+          <Row label="Margin" val={`${((subProfit/c.subPrice)*100).toFixed(1)}%`} color={subProfit>0?'#86efac':'#fca5a5'}/>
+        </div>
+      </div>}
+
+      {/* ── RETAIL ── */}
+      {mode==='retail'&&<>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          {RETAIL.map(r=><button key={r.id} onClick={()=>setSelRetail(r.id)} className={selRetail===r.id?'btn btn-primary btn-sm':'btn btn-ghost btn-sm'} style={{borderRadius:'var(--r-full)'}}>{r.name}</button>)}
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 300px',gap:16,alignItems:'start'}}>
+          <div>
+            <div className="section-label" style={{marginBottom:12}}>Cost breakdown · {rt.name}</div>
+            {[
+              [`Green beans: R${rt.greenKg}/kg × ${c.weightFactor} (weight loss)`, `R${rtBeanCost.toFixed(2)}`,'COGS'],
+              [`Roasting (Wiara, <100kg)`, `R${c.roasting.toFixed(2)}`,'COGS'],
+              [`Bag (1kg flat bottom + valve)`, `R${c.bag.toFixed(2)}`,'COGS'],
+              [`Label (OHMI branded)`, `R${c.label.toFixed(2)}`,'COGS'],
+              [`Foundation (Bitou)`, `R${c.foundation.toFixed(2)}`,'COGS'],
+              [`Grind option (if requested)`, `+R${c.grind.toFixed(2)}`,'optional'],
+              [`Shipping (customer pays)`, `R${c.shipping.toFixed(2)}`,'pass-through'],
+            ].map(([l,v,tag])=>(
+              <div key={l} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',background:'var(--white)',borderRadius:'var(--r-xs)',border:'1px solid var(--border)',marginBottom:3}}>
+                <div>
+                  <span style={{fontSize:13,color:'var(--text-sub)'}}>{l}</span>
+                  <span className={`pill pill-${tag==='COGS'?'red':tag==='optional'?'amber':'grey'}`} style={{marginLeft:8,fontSize:9}}>{tag}</span>
+                </div>
+                <span style={{fontWeight:700,fontSize:13}}>{v}</span>
+              </div>
+            ))}
+            <div style={{padding:'12px 14px',background:'var(--surface-2)',borderRadius:'var(--r-sm)',border:'2px solid var(--border)',marginTop:6}}>
+              <div style={{display:'flex',justifyContent:'space-between',fontSize:16,fontWeight:800}}>
+                <span>Total COGS (excl shipping)</span><span style={{color:'var(--red-text)'}}>R{rtCOGS.toFixed(2)}</span>
+              </div>
             </div>
           </div>
-
-          {grossProfit > 0 && (
-            <div className="calc-alert">
-              <div className="calc-alert-text">
-                OHMI retains minimum {fmtR(Math.round(ohmiPool))} per unit sold — mathematically guaranteed per OHMI-ACT-2026-002.
-              </div>
+          <div style={{background:'linear-gradient(135deg,#10B981,#0EA5E9)',borderRadius:'var(--r)',padding:20,display:'flex',flexDirection:'column',gap:10}}>
+            <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(255,255,255,0.6)'}}>Retail P&L · {rt.name}</div>
+            <Row label="Retail price" val={`R${rt.retail}`}/>
+            <Row label="Member price" val={`R${rt.member}`} color="rgba(255,255,255,0.8)"/>
+            <Row label="Total COGS" val={`R${rtCOGS.toFixed(2)}`} color="rgba(255,255,255,0.7)"/>
+            <div style={{height:1,background:'rgba(255,255,255,0.15)'}}/>
+            <div style={{padding:'12px',background:'rgba(0,0,0,0.2)',borderRadius:'var(--r-sm)'}}>
+              <div style={{fontSize:10,color:'rgba(255,255,255,0.6)',marginBottom:4}}>GROSS MARGIN (retail)</div>
+              <div style={{fontSize:32,fontWeight:800,color:'#fff',letterSpacing:'-0.02em'}}>R{rtMargin.toFixed(2)}</div>
+              <div style={{fontSize:16,fontWeight:700,color:'rgba(255,255,255,0.8)',marginTop:2}}>{rtMarginPct}%</div>
             </div>
-          )}
-          {grossProfit <= 0 && (
-            <div style={{ padding: '10px 14px', background: 'var(--red-bg)', borderRadius: 'var(--r-sm)', border: '1px solid rgba(192,80,58,0.2)' }}>
-              <div style={{ fontSize: 12, color: 'var(--red)', lineHeight: 1.5 }}>
-                ⚠ COGS exceeds net revenue. Adjust pricing or reduce costs.
-              </div>
+            <Row label="Member margin" val={`R${rtMemberMargin.toFixed(2)}`} color="rgba(255,255,255,0.8)"/>
+            <div style={{padding:'8px 12px',background:'rgba(255,255,255,0.1)',borderRadius:'var(--r-xs)',fontSize:11,color:'rgba(255,255,255,0.7)'}}>
+              ⚠ No pool contribution on retail. Pool feeds from R1,500 subscription only.
             </div>
-          )}
+          </div>
         </div>
-      </div>
+      </>}
+
+      {/* ── ACTIVATION ── */}
+      {mode==='activation'&&<div style={{display:'grid',gridTemplateColumns:'1fr 300px',gap:16,alignItems:'start'}}>
+        <div>
+          <div className="section-label" style={{marginBottom:12}}>Activation fee breakdown</div>
+          <EditRow label="Activation fee (once-off)" field="activation" hint="Paid by new member on registration"/>
+          <EditRow label="Sponsor commission" field="actSponsor" hint="R500 to direct sponsor — already in system"/>
+          <EditRow label="Pool contribution" field="actPool" hint="R500 to binary pool"/>
+          <div style={{padding:'12px 14px',background:'var(--surface-1)',borderRadius:'var(--r-sm)',border:'1px solid var(--border)',marginTop:8}}>
+            <div style={{fontSize:12,fontWeight:700,color:'var(--text-h)',marginBottom:8}}>Flow of R{c.activation.toFixed(0)} activation</div>
+            {[
+              [`→ Sponsor commission`,`R${c.actSponsor.toFixed(2)}`,'green'],
+              [`→ Binary pool (→ reps via rank)`,`R${c.actPool.toFixed(2)}`,'primary'],
+              [`→ OHMI (admin + onboarding)`,`R${actOhmi.toFixed(2)}`,'teal'],
+            ].map(([l,v,col])=>(
+              <div key={l} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid var(--border)',fontSize:13}}>
+                <span style={{color:'var(--text-sub)'}}>{l}</span>
+                <span style={{fontWeight:700,color:`var(--${col})`}}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{marginTop:12,padding:'12px 14px',background:'var(--primary-bg)',borderRadius:'var(--r-sm)',border:'1px solid var(--primary-border)',fontSize:12,color:'var(--text-sub)',lineHeight:1.8}}>
+            <strong style={{color:'var(--primary)'}}>Travel points on commission:</strong> Each time a rep earns commission (sign-up R500 or monthly pool share), they earn travel lifestyle points at 1:1 (R500 commission = 500 lifestyle points). Points accumulate and offset travel bookings through Vollard Black.
+          </div>
+        </div>
+        <div style={{background:'linear-gradient(135deg,#F59E0B,#EF4444)',borderRadius:'var(--r)',padding:20,display:'flex',flexDirection:'column',gap:12}}>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.16em',textTransform:'uppercase',color:'rgba(255,255,255,0.6)'}}>Activation economics</div>
+          <Row label="Activation fee" val={`R${c.activation.toFixed(2)}`}/>
+          <Row label="Sponsor gets" val={`R${c.actSponsor.toFixed(2)}`} color="rgba(255,255,255,0.8)"/>
+          <Row label="Binary pool" val={`R${c.actPool.toFixed(2)}`} color="rgba(255,255,255,0.8)"/>
+          <div style={{height:1,background:'rgba(255,255,255,0.15)'}}/>
+          <div style={{padding:'12px',background:'rgba(0,0,0,0.2)',borderRadius:'var(--r-sm)'}}>
+            <div style={{fontSize:10,color:'rgba(255,255,255,0.6)',marginBottom:4}}>OHMI KEEPS</div>
+            <div style={{fontSize:32,fontWeight:800,color:'#fff',letterSpacing:'-0.02em'}}>R{actOhmi.toFixed(2)}</div>
+          </div>
+          <Row label="Sponsor travel pts" val={`${c.actSponsor.toFixed(0)} pts`} sub="1:1 with commission earned"/>
+        </div>
+      </div>}
+
+      {/* ── SCALE ── */}
+      {mode==='scale'&&<>
+        <div style={{display:'flex',alignItems:'center',gap:16}}>
+          <div className="section-label">Active members:</div>
+          <input type="range" min={1} max={500} value={members} onChange={e=>setMembers(Number(e.target.value))} style={{flex:1,accentColor:'var(--primary)'}}/>
+          <div style={{fontSize:24,fontWeight:800,color:'var(--primary)',minWidth:60,textAlign:'right'}}>{members}</div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:12}}>
+          {[
+            ['Monthly pool (total)',`R${(members*c.subPool).toLocaleString('en-ZA',{maximumFractionDigits:0})}`,'linear-gradient(135deg,#6366F1,#0EA5E9)'],
+            ['Binary rep share (30%)',`R${(members*c.subPool*0.3).toLocaleString('en-ZA',{maximumFractionDigits:0})}`,'linear-gradient(135deg,#10B981,#0EA5E9)'],
+            ['OHMI total revenue',`R${(members*ohmiPerSub).toLocaleString('en-ZA',{maximumFractionDigits:0})}`,'linear-gradient(135deg,#8B5CF6,#6366F1)'],
+            ['Foundation (Bitou)',`R${(members*c.foundation).toLocaleString('en-ZA',{maximumFractionDigits:0})}`,'linear-gradient(135deg,#F59E0B,#EF4444)'],
+          ].map(([l,v,bg])=>(
+            <div key={l} style={{padding:'18px 20px',background:bg,borderRadius:'var(--r)',boxShadow:'var(--shadow-md)'}}>
+              <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,0.6)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:8}}>{l}</div>
+              <div style={{fontSize:28,fontWeight:800,color:'#fff',letterSpacing:'-0.02em'}}>{v}</div>
+              <div style={{fontSize:11,color:'rgba(255,255,255,0.5)',marginTop:4}}>per month · {members} members</div>
+            </div>
+          ))}
+        </div>
+        <div style={{background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)',overflow:'hidden'}}>
+          <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface-1)'}}><span className="section-label">Growth milestones</span></div>
+          <table className="data-table">
+            <thead><tr><th>Members</th><th>Monthly pool</th><th>Rep share</th><th>OHMI revenue</th><th>Annual OHMI</th><th>Foundation/yr</th></tr></thead>
+            <tbody>
+              {[10,25,50,100,250,500].map(m=>(
+                <tr key={m} style={{background:m===members?'var(--primary-bg)':undefined}}>
+                  <td style={{fontWeight:m===members?800:400,color:m===members?'var(--primary)':'var(--text-h)'}}>{m}</td>
+                  <td style={{fontWeight:600}}>{fmtR(m*c.subPool)}</td>
+                  <td style={{color:'var(--green-text)',fontWeight:600}}>{fmtR(m*c.subPool*0.3)}</td>
+                  <td style={{color:'var(--primary)',fontWeight:600}}>{fmtR(Math.round(m*ohmiPerSub))}</td>
+                  <td style={{fontWeight:800,color:'var(--text-h)'}}>{fmtR(Math.round(m*ohmiPerSub*12))}</td>
+                  <td style={{color:'var(--amber)',fontWeight:600}}>{fmtR(m*c.foundation*12)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>}
     </div>
   );
 }
