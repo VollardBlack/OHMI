@@ -6,7 +6,7 @@ import { searchHotels, searchFlights, searchCars, DESTINATIONS, AIRPORTS, CAR_LO
 
 const Rz = n => 'R\u202f' + Number(n||0).toLocaleString('en-ZA',{minimumFractionDigits:0,maximumFractionDigits:0});
 const Dz = d => d ? new Date(d).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}) : '—';
-const Stars = ({n}) => <span style={{color:'var(--gold)',letterSpacing:1,fontSize:11}}>{Array(Number(n)||0).fill('★').join('')}</span>;
+const Stars = ({n}) => <span style={{color:'var(--amber)',letterSpacing:1,fontSize:11}}>{Array(Number(n)||0).fill('★').join('')}</span>;
 
 const SEARCH_TYPES = [
   { id:'hotels',  label:'Hotels',      icon:'ti-building' },
@@ -16,8 +16,8 @@ const SEARCH_TYPES = [
 
 // ── Airline logo placeholder ──────────────────────────────
 const AirlineBadge = ({code, name}) => (
-  <div style={{width:42,height:42,borderRadius:'var(--r-xs)',background:'var(--maroon)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-    <span style={{fontFamily:'var(--display)',fontSize:11,fontWeight:700,color:'var(--gold-lt)',letterSpacing:0}}>{code}</span>
+  <div style={{width:42,height:42,borderRadius:'var(--r-xs)',background:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+    <span style={{fontFamily:'var(--display)',fontSize:11,fontWeight:700,color:'var(--teal)',letterSpacing:0}}>{code}</span>
   </div>
 );
 
@@ -31,7 +31,7 @@ function HotelCard({h, nights, onSelect}) {
         <div style={{position:'absolute',top:10,left:10}}>
           <span className="pill pill-gold"><Stars n={h.stars}/> {h.stars}-star</span>
         </div>
-        <div style={{position:'absolute',top:10,right:10,background:'var(--maroon)',color:'var(--gold-lt)',borderRadius:'var(--r-xs)',padding:'4px 9px',fontSize:13,fontWeight:700,fontFamily:'var(--display)'}}>
+        <div style={{position:'absolute',top:10,right:10,background:'var(--primary)',color:'var(--teal)',borderRadius:'var(--r-xs)',padding:'4px 9px',fontSize:13,fontWeight:700,fontFamily:'var(--display)'}}>
           {h.rating}
         </div>
       </div>
@@ -69,7 +69,7 @@ function FlightCard({f, onSelect}) {
           <div style={{fontSize:11,color:'var(--text-muted)'}}>{f.class} class · {f.stops===0?'Non-stop':`${f.stops} stop${f.stops>1?'s':''}`}</div>
         </div>
         <div style={{textAlign:'right'}}>
-          <div style={{fontFamily:'var(--display)',fontSize:22,fontWeight:600,color:'var(--maroon)'}}>
+          <div style={{fontFamily:'var(--display)',fontSize:22,fontWeight:600,color:'var(--primary)'}}>
             {Rz(f.total||f.price)}
           </div>
           <div style={{fontSize:10,color:'var(--text-dim)'}}>{f.passengers>1?`pp · ${Rz(f.price)}`:'per person'}</div>
@@ -85,7 +85,7 @@ function FlightCard({f, onSelect}) {
           <div style={{fontSize:10,color:'var(--text-muted)',marginBottom:4}}>{f.duration}</div>
           <div style={{display:'flex',alignItems:'center',gap:6}}>
             <div style={{flex:1,height:1.5,background:'var(--border-md)'}}/>
-            <i className="ti ti-plane" aria-hidden="true" style={{color:'var(--maroon)',fontSize:14,transform:'rotate(0deg)'}}/>
+            <i className="ti ti-plane" aria-hidden="true" style={{color:'var(--primary)',fontSize:14,transform:'rotate(0deg)'}}/>
             <div style={{flex:1,height:1.5,background:'var(--border-md)'}}/>
           </div>
           <div style={{fontSize:10,color:f.stops===0?'var(--green)':'var(--amber)',marginTop:4,fontWeight:600}}>
@@ -127,7 +127,7 @@ function CarCard({c, onSelect}) {
         <div style={{display:'flex',gap:12,marginBottom:10,flexWrap:'wrap'}}>
           {[['ti-users',c.seats+' seats'],['ti-luggage',c.bags+' bags'],['ti-settings',c.transmission],['ti-droplet',c.fuel]].map(([icon,label])=>(
             <span key={label} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,color:'var(--text-sub)'}}>
-              <i className={`ti ${icon}`} aria-hidden="true" style={{fontSize:12,color:'var(--maroon)'}}/>{label}
+              <i className={`ti ${icon}`} aria-hidden="true" style={{fontSize:12,color:'var(--primary)'}}/>{label}
             </span>
           ))}
         </div>
@@ -179,19 +179,19 @@ function HotelBooking({hotel, nights, checkIn, checkOut, guests, ptBalance, me, 
         <div className="dt-card-header" style={{textAlign:'center',padding:'28px 20px 20px'}}>
           <div style={{fontSize:36,marginBottom:10}}>🏨</div>
           <div className="dt-card-header-label">Booking {cashDue===0?'confirmed':'submitted'}</div>
-          <div style={{fontFamily:'var(--display)',fontSize:22,color:'var(--gold-lt)',fontWeight:600,marginTop:6}}>{hotel.name}</div>
+          <div style={{fontFamily:'var(--display)',fontSize:22,color:'var(--teal)',fontWeight:600,marginTop:6}}>{hotel.name}</div>
         </div>
         <div className="dt-card-body">
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
             {[['Reference',ref],['Check-in',Dz(checkIn)],['Check-out',Dz(checkOut)],['Room',selRoom.name],['Total',Rz(totalCost)],['Cash due',cashDue>0?Rz(cashDue):'Covered']].map(([l,v])=>(
               <div key={l} style={{padding:'10px 12px',background:'var(--surface-1)',borderRadius:'var(--r-xs)',border:'1px solid var(--border)'}}>
                 <div style={{fontSize:9,color:'var(--text-muted)',fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:3}}>{l}</div>
-                <div style={{fontSize:12,fontWeight:700,color:'var(--maroon)',wordBreak:'break-all'}}>{v}</div>
+                <div style={{fontSize:12,fontWeight:700,color:'var(--primary)',wordBreak:'break-all'}}>{v}</div>
               </div>
             ))}
           </div>
-          {cashDue>0&&<div style={{padding:'12px 14px',background:'var(--gold-bg)',borderRadius:'var(--r-sm)',border:'1px solid var(--gold-border)',fontSize:12,color:'var(--text-sub)',lineHeight:1.8,marginBottom:14}}>
-            <strong style={{color:'var(--maroon)',display:'block',marginBottom:4}}>EFT payment</strong>
+          {cashDue>0&&<div style={{padding:'12px 14px',background:'var(--amber-bg)',borderRadius:'var(--r-sm)',border:'1px solid var(--gold-border)',fontSize:12,color:'var(--text-sub)',lineHeight:1.8,marginBottom:14}}>
+            <strong style={{color:'var(--primary)',display:'block',marginBottom:4}}>EFT payment</strong>
             Vollard Black · FNB · Ref: <strong>{ref}</strong> · {Rz(cashDue)}
           </div>}
           <button className="btn btn-maroon btn-full" onClick={onBack}>Search more</button>
@@ -207,11 +207,11 @@ function HotelBooking({hotel, nights, checkIn, checkOut, guests, ptBalance, me, 
         <img src={hotel.images?.[imgIdx]||hotel.image} alt={hotel.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
         <div style={{position:'absolute',bottom:12,left:0,right:0,display:'flex',justifyContent:'center',gap:5}}>
           {(hotel.images||[hotel.image]).map((_,i)=>(
-            <button key={i} onClick={()=>setImgIdx(i)} style={{width:7,height:7,borderRadius:'50%',background:i===imgIdx?'var(--gold)':'rgba(255,255,255,0.5)',border:'none',cursor:'pointer',padding:0}}/>
+            <button key={i} onClick={()=>setImgIdx(i)} style={{width:7,height:7,borderRadius:'50%',background:i===imgIdx?'var(--amber)':'rgba(255,255,255,0.5)',border:'none',cursor:'pointer',padding:0}}/>
           ))}
         </div>
       </div>
-      <div style={{fontFamily:'var(--display)',fontSize:22,fontWeight:600,color:'var(--maroon)',marginBottom:3}}>{hotel.name}</div>
+      <div style={{fontFamily:'var(--display)',fontSize:22,fontWeight:600,color:'var(--primary)',marginBottom:3}}>{hotel.name}</div>
       <div style={{fontSize:12,color:'var(--text-muted)',marginBottom:12}}>{hotel.address}</div>
       <p style={{fontSize:13,color:'var(--text-sub)',lineHeight:1.8,marginBottom:14}}>{hotel.description}</p>
       {step==='detail'&&<>
@@ -221,14 +221,14 @@ function HotelBooking({hotel, nights, checkIn, checkOut, guests, ptBalance, me, 
             <div key={r.id} onClick={()=>setSelRoom(r)}
               style={{padding:'14px 0',borderBottom:'1px solid var(--border)',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
               <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${selRoom.id===r.id?'var(--maroon)':'var(--border-md)'}`,background:selRoom.id===r.id?'var(--maroon)':'transparent',flexShrink:0}}/>
+                <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${selRoom.id===r.id?'var(--primary)':'var(--border-md)'}`,background:selRoom.id===r.id?'var(--primary)':'transparent',flexShrink:0}}/>
                 <div>
                   <div style={{fontWeight:600,fontSize:13,color:'var(--text-h)'}}>{r.name}</div>
                   <div style={{fontSize:11,color:'var(--text-muted)'}}>{r.beds} · {r.capacity} guests max</div>
                 </div>
               </div>
               <div style={{textAlign:'right'}}>
-                <div style={{fontFamily:'var(--display)',fontSize:20,fontWeight:600,color:'var(--maroon)'}}>{Rz(r.price)}<span style={{fontSize:11,fontFamily:'var(--font)',color:'var(--text-dim)',fontWeight:400}}>/night</span></div>
+                <div style={{fontFamily:'var(--display)',fontSize:20,fontWeight:600,color:'var(--primary)'}}>{Rz(r.price)}<span style={{fontSize:11,fontFamily:'var(--font)',color:'var(--text-dim)',fontWeight:400}}>/night</span></div>
                 <div style={{fontSize:11,color:'var(--text-dim)'}}>{Rz(r.price*nights)} total</div>
               </div>
             </div>
@@ -240,11 +240,11 @@ function HotelBooking({hotel, nights, checkIn, checkOut, guests, ptBalance, me, 
         {ptBalance>0&&(
           <div className="card card-gold" style={{marginBottom:12}}>
             <div className="section-label" style={{marginBottom:8}}>Apply lifestyle points</div>
-            <div style={{fontSize:12,color:'var(--text-sub)',marginBottom:8}}>Available: <strong style={{color:'var(--gold-dk)'}}>{ptBalance.toLocaleString()} pts = {Rz(ptBalance)}</strong></div>
-            <input type="range" min={0} max={maxPts} step={100} value={ptsToUse} onChange={e=>setPtsToUse(Number(e.target.value))} style={{width:'100%',accentColor:'var(--gold)',marginBottom:8}}/>
+            <div style={{fontSize:12,color:'var(--text-sub)',marginBottom:8}}>Available: <strong style={{color:'var(--amber)'}}>{ptBalance.toLocaleString()} pts = {Rz(ptBalance)}</strong></div>
+            <input type="range" min={0} max={maxPts} step={100} value={ptsToUse} onChange={e=>setPtsToUse(Number(e.target.value))} style={{width:'100%',accentColor:'var(--amber)',marginBottom:8}}/>
             <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
-              <span>Using: <strong style={{color:'var(--gold-dk)'}}>{ptsToUse.toLocaleString()} pts ({Rz(ptsToUse)})</strong></span>
-              <span>Cash due: <strong style={{color:'var(--maroon)'}}>{Rz(cashDue)}</strong></span>
+              <span>Using: <strong style={{color:'var(--amber)'}}>{ptsToUse.toLocaleString()} pts ({Rz(ptsToUse)})</strong></span>
+              <span>Cash due: <strong style={{color:'var(--primary)'}}>{Rz(cashDue)}</strong></span>
             </div>
           </div>
         )}
@@ -302,18 +302,18 @@ function FlightBooking({flight, passengers, ptBalance, me, onBack, onBooked, fla
         <div className="dt-card-header" style={{textAlign:'center',padding:'28px 20px 20px'}}>
           <div style={{fontSize:36,marginBottom:10}}>✈️</div>
           <div className="dt-card-header-label">Flight {cashDue===0?'confirmed':'submitted'}</div>
-          <div style={{fontFamily:'var(--display)',fontSize:20,color:'var(--gold-lt)',fontWeight:600,marginTop:6}}>{flight.from.city} → {flight.to.city}</div>
+          <div style={{fontFamily:'var(--display)',fontSize:20,color:'var(--teal)',fontWeight:600,marginTop:6}}>{flight.from.city} → {flight.to.city}</div>
         </div>
         <div className="dt-card-body">
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:14}}>
             {[['Reference',ref],['Flight',`${flight.airline} ${flight.flight_number}`],['Route',`${flight.from.code} → ${flight.to.code}`],['Class',flight.class],['Total',Rz(totalCost)],['Cash due',cashDue>0?Rz(cashDue):'Covered']].map(([l,v])=>(
               <div key={l} style={{padding:'10px 12px',background:'var(--surface-1)',borderRadius:'var(--r-xs)',border:'1px solid var(--border)'}}>
                 <div style={{fontSize:9,color:'var(--text-muted)',fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:3}}>{l}</div>
-                <div style={{fontSize:12,fontWeight:700,color:'var(--maroon)',wordBreak:'break-all'}}>{v}</div>
+                <div style={{fontSize:12,fontWeight:700,color:'var(--primary)',wordBreak:'break-all'}}>{v}</div>
               </div>
             ))}
           </div>
-          {cashDue>0&&<div style={{padding:'12px 14px',background:'var(--gold-bg)',borderRadius:'var(--r-sm)',border:'1px solid var(--gold-border)',fontSize:12,lineHeight:1.8,marginBottom:14}}>
+          {cashDue>0&&<div style={{padding:'12px 14px',background:'var(--amber-bg)',borderRadius:'var(--r-sm)',border:'1px solid var(--gold-border)',fontSize:12,lineHeight:1.8,marginBottom:14}}>
             Vollard Black · FNB · Ref: <strong>{ref}</strong> · {Rz(cashDue)}
           </div>}
           <button className="btn btn-maroon btn-full" onClick={onBack}>Search more</button>
@@ -342,7 +342,7 @@ function FlightBooking({flight, passengers, ptBalance, me, onBack, onBooked, fla
             <div style={{fontSize:12,color:'var(--text-muted)',marginBottom:4}}>{flight.duration}</div>
             <div style={{display:'flex',alignItems:'center',gap:4}}>
               <div style={{flex:1,height:1.5,background:'var(--border-md)'}}/>
-              <i className="ti ti-plane" aria-hidden="true" style={{color:'var(--maroon)',fontSize:16}}/>
+              <i className="ti ti-plane" aria-hidden="true" style={{color:'var(--primary)',fontSize:16}}/>
               <div style={{flex:1,height:1.5,background:'var(--border-md)'}}/>
             </div>
           </div>
@@ -358,11 +358,11 @@ function FlightBooking({flight, passengers, ptBalance, me, onBack, onBooked, fla
       {ptBalance>0&&(
         <div className="card card-gold" style={{marginBottom:12}}>
           <div className="section-label" style={{marginBottom:8}}>Apply lifestyle points</div>
-          <div style={{fontSize:12,color:'var(--text-sub)',marginBottom:8}}>Available: <strong style={{color:'var(--gold-dk)'}}>{ptBalance.toLocaleString()} pts = {Rz(ptBalance)}</strong></div>
-          <input type="range" min={0} max={maxPts} step={100} value={ptsToUse} onChange={e=>setPtsToUse(Number(e.target.value))} style={{width:'100%',accentColor:'var(--gold)',marginBottom:8}}/>
+          <div style={{fontSize:12,color:'var(--text-sub)',marginBottom:8}}>Available: <strong style={{color:'var(--amber)'}}>{ptBalance.toLocaleString()} pts = {Rz(ptBalance)}</strong></div>
+          <input type="range" min={0} max={maxPts} step={100} value={ptsToUse} onChange={e=>setPtsToUse(Number(e.target.value))} style={{width:'100%',accentColor:'var(--amber)',marginBottom:8}}/>
           <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
-            <span>Using: <strong style={{color:'var(--gold-dk)'}}>{ptsToUse.toLocaleString()} pts</strong></span>
-            <span>Cash due: <strong style={{color:'var(--maroon)'}}>{Rz(cashDue)}</strong></span>
+            <span>Using: <strong style={{color:'var(--amber)'}}>{ptsToUse.toLocaleString()} pts</strong></span>
+            <span>Cash due: <strong style={{color:'var(--primary)'}}>{Rz(cashDue)}</strong></span>
           </div>
         </div>
       )}
@@ -414,11 +414,11 @@ function CarBooking({car, pickupDate, dropoffDate, ptBalance, me, onBack, onBook
       <div className="dt-card-header" style={{textAlign:'center',padding:'28px 20px 20px'}}>
         <div style={{fontSize:36,marginBottom:10}}>🚗</div>
         <div className="dt-card-header-label">Car rental {cashDue===0?'confirmed':'submitted'}</div>
-        <div style={{fontFamily:'var(--display)',fontSize:22,color:'var(--gold-lt)',fontWeight:600,marginTop:6}}>{car.name}</div>
+        <div style={{fontFamily:'var(--display)',fontSize:22,color:'var(--teal)',fontWeight:600,marginTop:6}}>{car.name}</div>
       </div>
       <div className="dt-card-body">
         <div style={{fontSize:12,color:'var(--text-sub)',lineHeight:1.8,marginBottom:14}}>
-          Ref: <strong style={{color:'var(--maroon)'}}>{ref}</strong> · {days} days · {Rz(totalCost)} total{cashDue>0?` · ${Rz(cashDue)} EFT due`:''}
+          Ref: <strong style={{color:'var(--primary)'}}>{ref}</strong> · {days} days · {Rz(totalCost)} total{cashDue>0?` · ${Rz(cashDue)} EFT due`:''}
         </div>
         <button className="btn btn-maroon btn-full" onClick={onBack}>Search more</button>
       </div>
@@ -431,21 +431,21 @@ function CarBooking({car, pickupDate, dropoffDate, ptBalance, me, onBack, onBook
       <div style={{borderRadius:'var(--r)',overflow:'hidden',height:180,marginBottom:14}}>
         <img src={car.image} alt={car.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
       </div>
-      <div style={{fontFamily:'var(--display)',fontSize:22,fontWeight:600,color:'var(--maroon)',marginBottom:4}}>{car.name}</div>
+      <div style={{fontFamily:'var(--display)',fontSize:22,fontWeight:600,color:'var(--primary)',marginBottom:4}}>{car.name}</div>
       <div style={{display:'flex',gap:12,flexWrap:'wrap',marginBottom:14}}>
         {[['ti-users',car.seats+' seats'],['ti-luggage',car.bags+' bags'],['ti-settings',car.transmission],['ti-droplet',car.fuel]].map(([icon,label])=>(
           <span key={label} style={{display:'flex',alignItems:'center',gap:4,fontSize:12,color:'var(--text-sub)'}}>
-            <i className={`ti ${icon}`} aria-hidden="true" style={{color:'var(--maroon)'}}/>{label}
+            <i className={`ti ${icon}`} aria-hidden="true" style={{color:'var(--primary)'}}/>{label}
           </span>
         ))}
       </div>
       {ptBalance>0&&(
         <div className="card card-gold" style={{marginBottom:12}}>
           <div className="section-label" style={{marginBottom:8}}>Apply lifestyle points</div>
-          <input type="range" min={0} max={maxPts} step={100} value={ptsToUse} onChange={e=>setPtsToUse(Number(e.target.value))} style={{width:'100%',accentColor:'var(--gold)',marginBottom:8}}/>
+          <input type="range" min={0} max={maxPts} step={100} value={ptsToUse} onChange={e=>setPtsToUse(Number(e.target.value))} style={{width:'100%',accentColor:'var(--amber)',marginBottom:8}}/>
           <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
-            <span>Using: <strong style={{color:'var(--gold-dk)'}}>{ptsToUse.toLocaleString()} pts</strong></span>
-            <span>Cash due: <strong style={{color:'var(--maroon)'}}>{Rz(cashDue)}</strong></span>
+            <span>Using: <strong style={{color:'var(--amber)'}}>{ptsToUse.toLocaleString()} pts</strong></span>
+            <span>Cash due: <strong style={{color:'var(--primary)'}}>{Rz(cashDue)}</strong></span>
           </div>
         </div>
       )}
@@ -604,7 +604,7 @@ export default function Travel() {
             <div style={{display:'flex',gap:0,background:'var(--white)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'var(--shadow-sm)'}}>
               {[{id:'search',label:'Search'},{id:'bookings',label:`My Bookings${bookings.length?` (${bookings.length})`:''}` }].map(t=>(
                 <button key={t.id} onClick={()=>{setTab(t.id);setSelHotel(null);setSelFlight(null);setSelCar(null);}}
-                  style={{flex:1,padding:'13px 16px',background:tab===t.id?'var(--maroon)':'transparent',color:tab===t.id?'#fff':'var(--text-muted)',border:'none',fontFamily:'var(--font)',fontSize:12,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',transition:'all 0.15s'}}>
+                  style={{flex:1,padding:'13px 16px',background:tab===t.id?'var(--primary)':'transparent',color:tab===t.id?'#fff':'var(--text-muted)',border:'none',fontFamily:'var(--font)',fontSize:12,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',cursor:'pointer',transition:'all 0.15s'}}>
                   {t.label}
                 </button>
               ))}
@@ -622,7 +622,7 @@ export default function Travel() {
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8}}>
                     {SEARCH_TYPES.map(st=>(
                       <button key={st.id} onClick={()=>{setSearchType(st.id);setSearched(false);}}
-                        style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'14px 10px',background:searchType===st.id?'var(--maroon)':'var(--white)',color:searchType===st.id?'#fff':'var(--text-sub)',border:`1.5px solid ${searchType===st.id?'var(--maroon)':'var(--border)'}`,borderRadius:'var(--r)',fontFamily:'var(--font)',fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',cursor:'pointer',transition:'all 0.15s',boxShadow:'var(--shadow-xs)'}}>
+                        style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'14px 10px',background:searchType===st.id?'var(--primary)':'var(--white)',color:searchType===st.id?'#fff':'var(--text-sub)',border:`1.5px solid ${searchType===st.id?'var(--primary)':'var(--border)'}`,borderRadius:'var(--r)',fontFamily:'var(--font)',fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',cursor:'pointer',transition:'all 0.15s',boxShadow:'var(--shadow-xs)'}}>
                         <i className={`ti ${st.icon}`} aria-hidden="true" style={{fontSize:22}}/>
                         {st.label}
                       </button>
@@ -640,7 +640,7 @@ export default function Travel() {
                         </div>
                       </div>
                       <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
-                        {DESTINATIONS.slice(0,8).map(d=><button key={d} onClick={()=>setDest(d)} className={`btn btn-xs ${dest===d?'btn-maroon':'btn-ghost'}`} style={{borderRadius:'var(--r-full)'}}>{d}</button>)}
+                        {DESTINATIONS.slice(0,8).map(d=><button key={d} onClick={()=>setDest(d)} className={`btn btn-xs ${dest===d?'btn-primary':'btn-ghost'}`} style={{borderRadius:'var(--r-full)'}}>{d}</button>)}
                       </div>
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:10,marginBottom:14}}>
                         <div className="field" style={{marginBottom:0}}><label className="field-label">Check-in</label><input className="field-input" type="date" value={checkIn} min={new Date().toISOString().slice(0,10)} onChange={e=>setCheckIn(e.target.value)}/></div>
@@ -678,7 +678,7 @@ export default function Travel() {
                           </div>
                         </div>
                         <button onClick={()=>{const t=flightFrom;setFlightFrom(flightTo);setFlightTo(t);}}
-                          style={{background:'var(--maroon-bg)',border:'1px solid var(--maroon-border)',borderRadius:'var(--r-full)',padding:'10px 12px',cursor:'pointer',color:'var(--maroon)',fontSize:16,marginBottom:1}}>⇄</button>
+                          style={{background:'var(--primary-bg)',border:'1px solid var(--maroon-border)',borderRadius:'var(--r-full)',padding:'10px 12px',cursor:'pointer',color:'var(--primary)',fontSize:16,marginBottom:1}}>⇄</button>
                         <div className="field" style={{marginBottom:0}}>
                           <label className="field-label">To</label>
                           <div style={{position:'relative'}}>
@@ -713,7 +713,7 @@ export default function Travel() {
                         </div>
                       </div>
                       <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14}}>
-                        {CAR_LOCATIONS.slice(0,6).map(l=><button key={l} onClick={()=>setCarLoc(l)} className={`btn btn-xs ${carLoc===l?'btn-maroon':'btn-ghost'}`} style={{borderRadius:'var(--r-full)'}}>{l}</button>)}
+                        {CAR_LOCATIONS.slice(0,6).map(l=><button key={l} onClick={()=>setCarLoc(l)} className={`btn btn-xs ${carLoc===l?'btn-primary':'btn-ghost'}`} style={{borderRadius:'var(--r-full)'}}>{l}</button>)}
                       </div>
                       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
                         <div className="field" style={{marginBottom:0}}><label className="field-label">Pickup date</label><input className="field-input" type="date" value={pickupDate} min={new Date().toISOString().slice(0,10)} onChange={e=>setPickupDate(e.target.value)}/></div>
@@ -728,7 +728,7 @@ export default function Travel() {
                   {/* Loading */}
                   {searching&&(
                     <div style={{textAlign:'center',padding:'40px 20px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}>
-                      <div style={{fontFamily:'var(--display)',fontSize:20,color:'var(--maroon)',marginBottom:8}}>
+                      <div style={{fontFamily:'var(--display)',fontSize:20,color:'var(--primary)',marginBottom:8}}>
                         {searchType==='hotels'?'Finding the best hotels…':searchType==='flights'?'Searching flights…':'Finding available cars…'}
                       </div>
                       <div style={{fontSize:12,color:'var(--text-muted)'}}>{searchType==='hotels'?`${dest} · ${nights} nights`:searchType==='flights'?`${flightFrom} → ${flightTo}`:`${carLoc}`}</div>
@@ -748,7 +748,7 @@ export default function Travel() {
                             {hotels.map(h=><HotelCard key={h.id} h={h} nights={nights} onSelect={setSelHotel}/>)}
                           </div>
                         </>
-                      ) : <div style={{textAlign:'center',padding:'40px 20px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}><div style={{fontSize:36,marginBottom:10}}>🏨</div><div style={{fontFamily:'var(--display)',fontSize:20,color:'var(--maroon)'}}>No hotels found for {dest}</div></div>
+                      ) : <div style={{textAlign:'center',padding:'40px 20px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}><div style={{fontSize:36,marginBottom:10}}>🏨</div><div style={{fontFamily:'var(--display)',fontSize:20,color:'var(--primary)'}}>No hotels found for {dest}</div></div>
                     )}
                     {searchType==='flights'&&(
                       flights.length>0 ? (
@@ -761,7 +761,7 @@ export default function Travel() {
                             {flights.map(f=><FlightCard key={f.id} f={f} onSelect={setSelFlight}/>)}
                           </div>
                         </>
-                      ) : <div style={{textAlign:'center',padding:'40px 20px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}><div style={{fontSize:36,marginBottom:10}}>✈️</div><div style={{fontFamily:'var(--display)',fontSize:20,color:'var(--maroon)'}}>No flights found</div></div>
+                      ) : <div style={{textAlign:'center',padding:'40px 20px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}><div style={{fontSize:36,marginBottom:10}}>✈️</div><div style={{fontFamily:'var(--display)',fontSize:20,color:'var(--primary)'}}>No flights found</div></div>
                     )}
                     {searchType==='cars'&&(
                       cars.length>0 ? (
@@ -771,7 +771,7 @@ export default function Travel() {
                             {cars.map(c=><CarCard key={c.id} c={{...c,days:Math.max(1,Math.round((new Date(dropoffDate)-new Date(pickupDate))/86400000)),total:c.price_per_day*Math.max(1,Math.round((new Date(dropoffDate)-new Date(pickupDate))/86400000))}} onSelect={setSelCar}/>)}
                           </div>
                         </>
-                      ) : <div style={{textAlign:'center',padding:'40px 20px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}><div style={{fontSize:36,marginBottom:10}}>🚗</div><div style={{fontFamily:'var(--display)',fontSize:20,color:'var(--maroon)'}}>No cars found</div></div>
+                      ) : <div style={{textAlign:'center',padding:'40px 20px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}><div style={{fontSize:36,marginBottom:10}}>🚗</div><div style={{fontFamily:'var(--display)',fontSize:20,color:'var(--primary)'}}>No cars found</div></div>
                     )}
                   </>}
 
@@ -807,7 +807,7 @@ export default function Travel() {
               bookings.length===0 ? (
                 <div style={{textAlign:'center',padding:'48px 20px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}>
                   <div style={{fontSize:40,marginBottom:12}}>✈️</div>
-                  <div style={{fontFamily:'var(--display)',fontSize:22,color:'var(--maroon)',marginBottom:8}}>No bookings yet</div>
+                  <div style={{fontFamily:'var(--display)',fontSize:22,color:'var(--primary)',marginBottom:8}}>No bookings yet</div>
                   <div style={{fontSize:13,color:'var(--text-muted)',marginBottom:20}}>Search for hotels, flights or car rental and offset costs with lifestyle points.</div>
                   <button className="btn btn-maroon" onClick={()=>setTab('search')}>Start searching</button>
                 </div>
@@ -819,7 +819,7 @@ export default function Travel() {
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
                           <div>
                             <div className="dt-card-header-label">{b.booking_ref}</div>
-                            <div style={{fontFamily:'var(--display)',fontSize:18,color:'var(--gold-lt)',fontWeight:600,marginTop:4}}>{b.hotel_name}</div>
+                            <div style={{fontFamily:'var(--display)',fontSize:18,color:'var(--teal)',fontWeight:600,marginTop:4}}>{b.hotel_name}</div>
                             <div style={{fontSize:12,color:'rgba(255,255,255,0.45)',marginTop:2}}>{b.hotel_location}</div>
                           </div>
                           <span className={`pill pill-${b.status==='confirmed'?'green':b.status==='pending'?'gold':'red'}`}>{b.status}</span>
@@ -830,7 +830,7 @@ export default function Travel() {
                           {[['Room/Type',b.room_name],['Check-in',Dz(b.check_in)],['Check-out',Dz(b.check_out)],['Duration',`${b.nights} ${b.nights===1?'night':'nights'}`],['Total',Rz(b.total_cost)],['Cash due',b.cash_due>0?Rz(b.cash_due):'Covered']].map(([l,v])=>(
                             <div key={l} style={{padding:'8px 10px',background:'var(--surface-1)',borderRadius:'var(--r-xs)',border:'1px solid var(--border)'}}>
                               <div style={{fontSize:9,color:'var(--text-muted)',fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:3}}>{l}</div>
-                              <div style={{fontSize:12,fontWeight:700,color:'var(--maroon)'}}>{v}</div>
+                              <div style={{fontSize:12,fontWeight:700,color:'var(--primary)'}}>{v}</div>
                             </div>
                           ))}
                         </div>
