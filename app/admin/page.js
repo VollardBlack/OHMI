@@ -710,45 +710,150 @@ export default function Admin() {
 
             {/* ── DASHBOARD ── */}
             {tab === 'dashboard' && <>
-              <div className="metric-grid">
+
+              {/* Alerts */}
+              {pendingActivations.length > 0 && (
+                <div style={{background:'linear-gradient(135deg,#F59E0B,#EF4444)',borderRadius:'var(--r)',padding:'14px 18px',display:'flex',alignItems:'center',gap:14,boxShadow:'var(--shadow-md)'}}>
+                  <div style={{width:36,height:36,borderRadius:'var(--r-sm)',background:'rgba(255,255,255,0.2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>⚡</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontWeight:700,color:'#fff',fontSize:14}}>{pendingActivations.length} activation{pendingActivations.length!==1?'s':''} awaiting approval</div>
+                    <div style={{fontSize:12,color:'rgba(255,255,255,0.75)',marginTop:2}}>New members cannot access the platform until activated</div>
+                  </div>
+                  <button className="btn btn-sm" style={{background:'#fff',color:'#D97706',fontWeight:700,flexShrink:0}} onClick={()=>setTab('members')}>Review →</button>
+                </div>
+              )}
+
+              {/* KPI row */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12}}>
                 {[
-                  ['Total members', members.length, ''],
-                  ['Active', activeMembers.length, 'green'],
-                  ['Pool this month', fmtR(poolTotal), 'teal'],
-                  ['Rep share 30%', fmtR(poolTotal*0.3), ''],
-                  ['OHMI retention 70%', fmtR(poolTotal*0.7), 'primary'],
-                  ['Pending activations', pendingActivations.length, pendingActivations.length>0?'gold':''],
-                  ['Pending orders', pendingOrders.length, pendingOrders.length>0?'gold':''],
-                  ['Retail revenue', fmtR(totalRevenue), 'gold'],
-                ].map(([l,v,c]) => (
-                  <div key={l} className="metric">
-                    <div className={`metric-val ${c}`}>{v}</div>
-                    <div className="metric-label">{l}</div>
+                  {icon:'ti-users',      cls:'stat-icon-primary', val:members.length,            label:'Total members'},
+                  {icon:'ti-user-check', cls:'stat-icon-green',   val:activeMembers.length,      label:'Active members'},
+                  {icon:'ti-user-x',     cls:'stat-icon-amber',   val:members.filter(m=>m.status==='pending').length, label:'Pending'},
+                  {icon:'ti-coin',       cls:'stat-icon-teal',    val:fmtR(poolTotal),           label:'Pool this month'},
+                  {icon:'ti-trending-up',cls:'stat-icon-purple',  val:fmtR(totalRevenue),        label:'Retail revenue'},
+                  {icon:'ti-package',    cls:'stat-icon-primary', val:products.length,           label:'Products'},
+                ].map(s=>(
+                  <div key={s.label} className="stat-card">
+                    <div className={`stat-icon ${s.cls}`}><i className={`ti ${s.icon}`} aria-hidden="true"/></div>
+                    <div><div className="stat-val" style={{fontSize:18}}>{s.val}</div><div className="stat-label">{s.label}</div></div>
                   </div>
                 ))}
               </div>
 
+              {/* Pool breakdown */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12}}>
+                {[
+                  ['Total pool',       fmtR(poolTotal),       `${activeMembers.length} members × R500`, 'linear-gradient(135deg,#6366F1,#0EA5E9)'],
+                  ['Commission pool',  fmtR(poolTotal*0.3),   '30% distributed to reps',                'linear-gradient(135deg,#10B981,#0EA5E9)'],
+                  ['OHMI retention',   fmtR(poolTotal*0.7),   '70% ops, foundation & growth',           'linear-gradient(135deg,#8B5CF6,#6366F1)'],
+                ].map(([label,val,sub,bg])=>(
+                  <div key={label} style={{padding:'20px',background:bg,borderRadius:'var(--r)',boxShadow:'var(--shadow-md)',position:'relative',overflow:'hidden'}}>
+                    <div style={{position:'absolute',width:100,height:100,borderRadius:'50%',background:'rgba(255,255,255,0.07)',top:-25,right:-25}}/>
+                    <div style={{fontSize:10,color:'rgba(255,255,255,0.6)',fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',marginBottom:8}}>{label}</div>
+                    <div style={{fontSize:28,fontWeight:800,color:'#fff',letterSpacing:'-0.02em',lineHeight:1}}>{val}</div>
+                    <div style={{fontSize:11,color:'rgba(255,255,255,0.55)',marginTop:6}}>{sub}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Two column: recent members + recent orders */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
+
+                {/* Recent members */}
+                <div className="card card-flush">
+                  <div style={{padding:'14px 18px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--surface-1)'}}>
+                    <span className="section-label">Recent members</span>
+                    <button className="btn btn-ghost btn-xs" onClick={()=>setTab('members')}>View all</button>
+                  </div>
+                  {members.slice(0,6).map(m=>(
+                    <div key={m.id} style={{display:'flex',alignItems:'center',gap:12,padding:'11px 18px',borderBottom:'1px solid var(--border)'}}>
+                      <div style={{width:32,height:32,borderRadius:'50%',background:'linear-gradient(135deg,#6366F1,#0EA5E9)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:700,flexShrink:0}}>
+                        {m.full_name?.[0]||'?'}
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontWeight:600,fontSize:13,color:'var(--text-h)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.full_name}</div>
+                        <div style={{fontSize:11,color:'var(--text-muted)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m.email}</div>
+                      </div>
+                      <span className={`pill pill-${m.status==='active'?'green':m.status==='pending'?'amber':'red'}`} style={{flexShrink:0}}>{m.status}</span>
+                    </div>
+                  ))}
+                  {members.length===0&&<div style={{padding:'24px',textAlign:'center',color:'var(--text-muted)',fontSize:13}}>No members yet</div>}
+                </div>
+
+                {/* Recent orders + quick actions */}
+                <div style={{display:'flex',flexDirection:'column',gap:12}}>
+
+                  {/* Quick actions */}
+                  <div className="card">
+                    <div className="section-label" style={{marginBottom:12}}>Quick actions</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                      {[
+                        ['ti-users',     'Members',     ()=>setTab('members')],
+                        ['ti-binary-tree-2','Tree',     ()=>setTab('network')],
+                        ['ti-shopping-bag','Orders',    ()=>setTab('orders')],
+                        ['ti-coin',      'Billing',     ()=>setTab('billing')],
+                        ['ti-package',   'Products',    ()=>setTab('products')],
+                        ['ti-plane',     'Travel',      ()=>setTab('travel')],
+                      ].map(([icon,label,fn])=>(
+                        <button key={label} onClick={fn} style={{display:'flex',alignItems:'center',gap:8,padding:'10px 12px',background:'var(--surface-1)',border:'1px solid var(--border)',borderRadius:'var(--r-sm)',cursor:'pointer',fontFamily:'inherit',fontSize:12,fontWeight:600,color:'var(--text-body)',transition:'all 0.15s',textAlign:'left'}}
+                          onMouseEnter={e=>{e.currentTarget.style.background='var(--primary-bg)';e.currentTarget.style.borderColor='var(--primary-border)';e.currentTarget.style.color='var(--primary)';}}
+                          onMouseLeave={e=>{e.currentTarget.style.background='var(--surface-1)';e.currentTarget.style.borderColor='var(--border)';e.currentTarget.style.color='var(--text-body)';}}>
+                          <i className={`ti ${icon}`} style={{fontSize:15}} aria-hidden="true"/>
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recent orders */}
+                  <div className="card card-flush" style={{flex:1}}>
+                    <div style={{padding:'12px 18px',borderBottom:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',background:'var(--surface-1)'}}>
+                      <span className="section-label">Recent orders</span>
+                      <button className="btn btn-ghost btn-xs" onClick={()=>setTab('orders')}>View all</button>
+                    </div>
+                    {[...pkgOrders].slice(0,5).map(o=>{
+                      const m=members.find(x=>x.id===o.member_id);
+                      const p=packages.find(x=>x.id===o.package_id)||products.find(x=>x.id===o.package_id);
+                      return(
+                        <div key={o.id} style={{display:'flex',alignItems:'center',gap:10,padding:'10px 18px',borderBottom:'1px solid var(--border)'}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:600,fontSize:12,color:'var(--text-h)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{m?.full_name||'?'}</div>
+                            <div style={{fontSize:11,color:'var(--text-muted)'}}>{p?.name||'Product'}</div>
+                          </div>
+                          <div style={{textAlign:'right',flexShrink:0}}>
+                            <div style={{fontWeight:700,fontSize:13,color:'var(--text-h)'}}>{fmtR(o.total)}</div>
+                            <span className={`pill pill-${o.status==='fulfilled'?'green':o.status==='pending'?'amber':'red'}`} style={{fontSize:9}}>{o.status}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {pkgOrders.length===0&&<div style={{padding:'24px',textAlign:'center',color:'var(--text-muted)',fontSize:13}}>No orders yet</div>}
+                  </div>
+                </div>
+              </div>
+
+              {/* Pending activations table — always shown if any */}
               {pendingActivations.length > 0 && (
                 <div className="card card-flush">
-                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--primary-border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <i className="ti ti-alert-circle" style={{ color: 'var(--amber)', fontSize: 16 }} aria-hidden="true" />
-                    <span className="section-label">Pending activations — action required</span>
+                  <div style={{padding:'14px 18px',borderBottom:'1px solid var(--border)',background:'rgba(245,158,11,0.06)',display:'flex',alignItems:'center',gap:10}}>
+                    <i className="ti ti-alert-circle" style={{color:'var(--amber)',fontSize:16}} aria-hidden="true"/>
+                    <span className="section-label">Pending activations — R2,500 payment required</span>
                   </div>
                   <table className="data-table">
-                    <thead><tr><th>Member</th><th>Email</th><th>Registered</th><th>Amount</th><th>Action</th></tr></thead>
+                    <thead><tr><th>Member</th><th>Email</th><th>Phone</th><th>Registered</th><th>Amount</th><th>Action</th></tr></thead>
                     <tbody>
-                      {pendingActivations.map(a => {
-                        const m = members.find(x => x.id === a.member_id);
-                        return (
+                      {pendingActivations.map(a=>{
+                        const m=members.find(x=>x.id===a.member_id);
+                        return(
                           <tr key={a.id}>
-                            <td style={{ fontWeight: 500 }}>{m?.full_name}</td>
-                            <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{m?.email}</td>
-                            <td style={{ color: 'var(--text-dim)', fontSize: 12 }}>{fmtD(a.created_at)}</td>
-                            <td style={{ color: 'var(--amber)', fontWeight: 500 }}>{fmtR(a.amount)}</td>
+                            <td style={{fontWeight:600}}>{m?.full_name}</td>
+                            <td style={{color:'var(--text-muted)',fontSize:12}}>{m?.email}</td>
+                            <td style={{color:'var(--text-muted)',fontSize:12}}>{m?.phone||'—'}</td>
+                            <td style={{color:'var(--text-muted)',fontSize:12}}>{fmtD(a.created_at)}</td>
+                            <td style={{fontWeight:700,color:'var(--amber)'}}>{fmtR(a.amount)}</td>
                             <td>
-                              <button className="btn btn-primary btn-xs" disabled={busy===a.id}
-                                onClick={() => approveActivation(a.id, a.member_id)}>
-                                {busy===a.id ? '…' : 'Approve payment'}
+                              <button className="btn btn-primary btn-xs" disabled={busy===a.id} onClick={()=>approveActivation(a.id,a.member_id)}>
+                                {busy===a.id?'…':'Approve & activate'}
                               </button>
                             </td>
                           </tr>
@@ -759,20 +864,25 @@ export default function Admin() {
                 </div>
               )}
 
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
-                {[
-                  ['Active × R500', fmtR(poolTotal), 'Total pool','linear-gradient(135deg,#6366F1,#0EA5E9)'],
-                  ['30% to reps', fmtR(poolTotal*0.3), 'Commission pool','linear-gradient(135deg,#10B981,#0EA5E9)'],
-                  ['70% OHMI', fmtR(poolTotal*0.7), 'Ops + Foundation','linear-gradient(135deg,#8B5CF6,#6366F1)'],
-                ].map(([l,v,s,bg]) => (
-                  <div key={l} style={{padding:'18px 16px',background:bg,borderRadius:'var(--r)',boxShadow:'var(--shadow-md)',position:'relative',overflow:'hidden'}}>
-                    <div style={{position:'absolute',width:80,height:80,borderRadius:'50%',background:'rgba(255,255,255,0.08)',top:-20,right:-20}}/>
-                    <div style={{fontSize:10,color:'rgba(255,255,255,0.65)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:8,fontWeight:700}}>{l}</div>
-                    <div style={{fontSize:26,color:'#fff',fontWeight:800,letterSpacing:'-0.02em',lineHeight:1}}>{v}</div>
-                    <div style={{fontSize:11,color:'rgba(255,255,255,0.6)',marginTop:5}}>{s}</div>
+              {/* Stock alerts */}
+              {products.filter(p=>Number(p.stock_qty)<=Number(p.stock_low_threshold)).length>0&&(
+                <div className="card card-flush">
+                  <div style={{padding:'14px 18px',borderBottom:'1px solid var(--border)',background:'rgba(239,68,68,0.04)',display:'flex',alignItems:'center',gap:10}}>
+                    <i className="ti ti-alert-triangle" style={{color:'var(--red)',fontSize:16}} aria-hidden="true"/>
+                    <span className="section-label">Low stock alerts</span>
+                    <button className="btn btn-ghost btn-xs" style={{marginLeft:'auto'}} onClick={()=>setTab('products')}>Manage stock</button>
                   </div>
-                ))}
-              </div>
+                  <div style={{padding:'14px 18px',display:'flex',gap:10,flexWrap:'wrap'}}>
+                    {products.filter(p=>Number(p.stock_qty)<=Number(p.stock_low_threshold)).map(p=>(
+                      <div key={p.id} style={{padding:'8px 14px',background:'var(--red-bg)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:'var(--r-sm)',display:'flex',alignItems:'center',gap:8}}>
+                        <span style={{fontSize:12,fontWeight:600,color:'var(--red-text)'}}>{p.name}</span>
+                        <span style={{fontSize:11,color:'var(--red-text)',fontWeight:800}}>{Number(p.stock_qty)} left</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
             </>}
 
             {/* ── MEMBERS ── */}
