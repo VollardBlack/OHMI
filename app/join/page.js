@@ -108,7 +108,7 @@ export default function Join() {
 
       {step === 'form' && (
         <section className="section">
-          <div className="container" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40, alignItems: 'start' }}>
+          <div className="container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 32, alignItems: 'start' }}>
             {/* Form */}
             <div>
               <h2 style={{ fontFamily: 'var(--display)', fontSize: 26, marginBottom: 24 }}>Register your details</h2>
