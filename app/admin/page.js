@@ -313,13 +313,14 @@ export default function Admin() {
           <div className="rail-divider" />
           <div className="rail-bottom">
             <Link href="/dashboard">
-              <button className="rail-item" data-tip="Member view" aria-label="Member view">
-                <i className="ti ti-user" aria-hidden="true" />
+              <button className="rail-item" data-tip="← Member portal" aria-label="Member portal"
+                style={{color:'var(--primary)'}}>
+                <i className="ti ti-layout-dashboard" aria-hidden="true" />
               </button>
             </Link>
-            <Link href="/">
-              <button className="rail-item" data-tip="Storefront" aria-label="Storefront">
-                <i className="ti ti-home" aria-hidden="true" />
+            <Link href="/login">
+              <button className="rail-item" data-tip="Sign out" aria-label="Sign out">
+                <i className="ti ti-logout" aria-hidden="true" />
               </button>
             </Link>
           </div>
@@ -333,6 +334,12 @@ export default function Admin() {
             <div className="app-topbar-right">
               <span className="topbar-badge topbar-badge-gold">{activeMembers.length} active</span>
               <span className="topbar-badge topbar-badge-green">{fmtR(poolTotal)} pool</span>
+              <Link href="/dashboard">
+                <button className="btn btn-white btn-sm" style={{display:'flex',alignItems:'center',gap:6}}>
+                  <i className="ti ti-layout-dashboard" aria-hidden="true" style={{fontSize:14}}/>
+                  Member portal
+                </button>
+              </Link>
             </div>
           </div>
 
