@@ -524,6 +524,7 @@ export default function Admin() {
   const [pkgOrders, setPkgOrders] = useState([]);
   const [toast, setToast] = useState('');
   const [travelBookings, setTravelBookings] = useState([]);
+  const [travelRequests, setTravelRequests] = useState([]);
   const [products, setProducts] = useState([]);
   const [stockMovements, setStockMovements] = useState([]);
   const [productTab, setProductTab] = useState('list'); // list | form | stock
@@ -536,7 +537,7 @@ export default function Admin() {
   const flash = m => { setToast(m); setTimeout(() => setToast(''), 3000); };
 
   const load = useCallback(async () => {
-    const [m, n, o, s, a, l, f, b, p, po, tb, pr, sm] = await Promise.all([
+    const [m, n, o, s, a, l, f, b, p, po, tb, pr, sm, tr] = await Promise.all([
       supabase.from('members').select('*').order('created_at', { ascending: false }),
       supabase.from('tree_view').select('*'),
       supabase.from('retail_orders').select('*').order('created_at', { ascending: false }),
@@ -550,6 +551,7 @@ export default function Admin() {
       supabase.from('travel_bookings').select('*').order('created_at', { ascending: false }),
       supabase.from('products').select('*').order('sort_order'),
       supabase.from('stock_movements').select('*').order('created_at', { ascending: false }),
+      supabase.from('travel_requests').select('*').order('created_at', { ascending: false }),
     ]);
     setMembers(m.data||[]);
     setNodes(n.data||[]);
@@ -564,6 +566,7 @@ export default function Admin() {
     setTravelBookings(tb.data||[]);
     setProducts(pr.data||[]);
     setStockMovements(sm.data||[]);
+    setTravelRequests(tr.data||[]);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -1380,7 +1383,7 @@ export default function Admin() {
                         </tr>
                       );
                     }):(
-                      <tr><td colSpan="9" style={{textAlign:'center',padding:32,color:'var(--text-muted)'}}>No travel bookings yet.</td></tr>
+                      <tr><td colSpan="9" style={{textAlign:'center',padding:32,color:'var(--text-muted)'}}>No hotel bookings yet.</td></tr>
                     )}
                   </tbody>
                 </table>
