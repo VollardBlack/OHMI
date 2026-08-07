@@ -5,8 +5,10 @@ export default function Home() {
   const [scrollY, setScrollY] = useState(0);
   const [visible, setVisible] = useState({});
 
-  // Redirect logged-in users
+  // Redirect logged-in users — skip if ?home=1 in URL
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('home') === '1') return;
     const id    = localStorage.getItem('ohmi_member_id');
     const admin = localStorage.getItem('ohmi_role');
     if (id) window.location.href = admin === 'admin' ? '/admin' : '/dashboard';
