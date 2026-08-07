@@ -114,12 +114,12 @@ function ProfitCalc() {
           <div className="section-label" style={{ marginBottom: 12 }}>Cost inputs — editable</div>
           <div className="calc-inputs">
             {row('Green beans (Uganda Bugisu AA)', null, true, 'greenBeans')}
-            <div style={{ fontSize: 11, color: 'var(--dim)', padding: '2px 14px' }}>per kg · from Green Coffee Supply</div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '2px 14px' }}>per kg · from Green Coffee Supply</div>
             {row('Roasting cost', null, true, 'roasting')}
-            <div style={{ fontSize: 11, color: 'var(--dim)', padding: '2px 14px' }}>per kg · Wiara Coffee (under 100kg rate)</div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '2px 14px' }}>per kg · Wiara Coffee (under 100kg rate)</div>
             {row('Packaging (per bag)', null, true, 'packaging')}
             {row('Foundation allocation', null, true, 'foundation')}
-            <div style={{ fontSize: 11, color: 'var(--dim)', padding: '2px 14px' }}>per kg · Bitou region</div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '2px 14px' }}>per kg · Bitou region</div>
             {row('Delivery estimate', null, true, 'delivery')}
             <div style={{ height: 1, background: 'var(--border)', margin: '6px 0' }} />
             {row(`Coffee cost (${pkg.kg}kg × R${c.greenBeans+c.roasting})`, `R${coffeeCost.toFixed(2)}`, false)}
@@ -130,7 +130,7 @@ function ProfitCalc() {
             {row('Total cost of goods', `R${totalCost.toFixed(2)}`, false)}
             {row('Retail price', fmtR(pkg.retail), false)}
             {row('Pool contribution (total)', fmtR(pkg.pool), false)}
-            <div style={{ fontSize: 11, color: 'var(--dim)', padding: '2px 14px' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', padding: '2px 14px' }}>
               → Rep share (30%): {fmtR(repPool)} · OHMI retention (70%): {fmtR(ohmiPool)}
             </div>
             {row('Net revenue (retail − pool)', `R${netRevenue.toFixed(2)}`, false)}
@@ -183,7 +183,7 @@ function ProfitCalc() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {[10,50,100].map(u => (
                 <div key={u} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span style={{ color: 'var(--dim)' }}>{u} units</span>
+                  <span style={{ color: 'var(--text-dim)' }}>{u} units</span>
                   <span style={{ color: 'var(--gold)', fontWeight: 500 }}>{fmtR(Math.round(ohmiTotal * u))}</span>
                 </div>
               ))}
@@ -312,7 +312,7 @@ export default function Admin() {
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
       {/* Mobile topbar */}
       <div className="mobile-topbar">
-        <span className="mobile-topbar-logo">OHMI Admin</span>
+        <span className="mobile-topbar-logo" style={{ color:"var(--gold3)" }}>OHMI Admin</span>
         <div style={{ display:'flex', gap:8 }}>
           <span className="topbar-badge topbar-badge-gold" style={{ fontSize:9 }}>{activeMembers.length} active</span>
         </div>
@@ -395,8 +395,8 @@ export default function Admin() {
                         return (
                           <tr key={a.id}>
                             <td style={{ fontWeight: 500 }}>{m?.full_name}</td>
-                            <td style={{ color: 'var(--muted)', fontSize: 12 }}>{m?.email}</td>
-                            <td style={{ color: 'var(--dim)', fontSize: 12 }}>{fmtD(a.created_at)}</td>
+                            <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{m?.email}</td>
+                            <td style={{ color: 'var(--text-dim)', fontSize: 12 }}>{fmtD(a.created_at)}</td>
                             <td style={{ color: 'var(--gold)', fontWeight: 500 }}>{fmtR(a.amount)}</td>
                             <td>
                               <button className="btn btn-gold btn-xs" disabled={busy===a.id}
@@ -420,10 +420,10 @@ export default function Admin() {
                     ['30% to reps', fmtR(poolTotal*0.3), 'Commission pool'],
                     ['70% OHMI', fmtR(poolTotal*0.7), 'Ops + Foundation'],
                   ].map(([l,v,s]) => (
-                    <div key={l} style={{ padding: '14px 16px', background: 'var(--dark)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--dim)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>{l}</div>
+                    <div key={l} style={{ padding: '14px 16px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>{l}</div>
                       <div style={{ fontFamily: 'var(--display)', fontSize: 24, color: 'var(--gold)', fontWeight: 600 }}>{v}</div>
-                      <div style={{ fontSize: 11, color: 'var(--dim)', marginTop: 3 }}>{s}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>{s}</div>
                     </div>
                   ))}
                 </div>
@@ -435,7 +435,7 @@ export default function Admin() {
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 <input className="field-input" style={{ maxWidth: 300 }} placeholder="Search members…"
                   value={memberFilter} onChange={e => setMemberFilter(e.target.value)} />
-                <span style={{ fontSize: 12, color: 'var(--dim)' }}>{filteredMembers.length} of {members.length}</span>
+                <span style={{ fontSize: 12, color: 'var(--text-dim)' }}>{filteredMembers.length} of {members.length}</span>
               </div>
               <div className="card card-flush">
                 <table className="data-table">
@@ -448,7 +448,7 @@ export default function Admin() {
                       return (
                         <tr key={m.id}>
                           <td style={{ fontWeight: 500 }}>{m.full_name}</td>
-                          <td style={{ color: 'var(--muted)', fontSize: 12 }}>{m.email}</td>
+                          <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{m.email}</td>
                           <td><span className={`pill pill-${m.status==='active'?'green':m.status==='pending'?'gold':'red'}`}>{m.status}</span></td>
                           <td>
                             {act ? (act.status==='paid'
@@ -459,11 +459,11 @@ export default function Admin() {
                                     {busy===act.id?'…':'Approve'}
                                   </button>
                                 </div>
-                            ) : <span style={{ color:'var(--dim)',fontSize:12 }}>—</span>}
+                            ) : <span style={{ color:'var(--text-dim)',fontSize:12 }}>—</span>}
                           </td>
                           <td><span className={`pill pill-${sub?.status==='active'?'green':'grey'}`}>{sub?`R${sub.amount}/mo`:'None'}</span></td>
                           <td style={{ color:'var(--gold)',fontWeight:500 }}>{Number(bal?.balance)>0?fmtR(bal.balance):'—'}</td>
-                          <td style={{ color:'var(--dim)',fontSize:12 }}>{fmtD(m.created_at)}</td>
+                          <td style={{ color:'var(--text-dim)',fontSize:12 }}>{fmtD(m.created_at)}</td>
                           <td>
                             {m.status==='active' && (
                               <button className="btn btn-ghost btn-xs"
@@ -498,7 +498,7 @@ export default function Admin() {
                   <span className="section-label">Binary network · click to expand/collapse</span>
                 </div>
                 <div className="tree-wrap" style={{ padding:24,minWidth:500 }}>
-                  {rootTreeNode ? <TreeNode node={rootTreeNode} map={treeMap} /> : <p style={{ color:'var(--dim)' }}>No network yet.</p>}
+                  {rootTreeNode ? <TreeNode node={rootTreeNode} map={treeMap} /> : <p style={{ color:'var(--text-dim)' }}>No network yet.</p>}
                 </div>
               </div>
               <div className="card card-flush">
@@ -515,7 +515,7 @@ export default function Admin() {
                           <td style={{ fontWeight:500 }}>{m?.full_name||'?'}</td>
                           <td><span className={`pill pill-${m?.status==='active'?'green':'grey'}`}>{m?.status||'?'}</span></td>
                           <td style={{ color:n.leg==='L'?'var(--blue)':n.leg==='R'?'var(--gold)':'var(--muted)', fontWeight:500 }}>{n.leg||'Root'}</td>
-                          <td style={{ color:'var(--dim)' }}>{n.depth}</td>
+                          <td style={{ color:'var(--text-dim)' }}>{n.depth}</td>
                           <td style={{ color:'var(--gold)',fontWeight:500 }}>{n.left_count}</td>
                           <td style={{ color:'var(--gold)',fontWeight:500 }}>{n.right_count}</td>
                           <td><span className={`pill pill-${n.subscribed?'green':'red'}`}>{n.subscribed?'Yes':'No'}</span></td>
@@ -541,11 +541,11 @@ export default function Admin() {
                   <tbody>
                     {orders.map(o=>(
                       <tr key={o.id}>
-                        <td style={{ fontWeight:500 }}>{o.customer_name}<div style={{ fontSize:11,color:'var(--dim)' }}>{o.customer_email}</div></td>
-                        <td style={{ color:'var(--muted)',fontSize:12 }}>{Array.isArray(o.items)?o.items.map(i=>`${i.size}×${i.qty}`).join(', '):'—'}</td>
+                        <td style={{ fontWeight:500 }}>{o.customer_name}<div style={{ fontSize:11,color:'var(--text-dim)' }}>{o.customer_email}</div></td>
+                        <td style={{ color:'var(--text-muted)',fontSize:12 }}>{Array.isArray(o.items)?o.items.map(i=>`${i.size}×${i.qty}`).join(', '):'—'}</td>
                         <td style={{ color:'var(--gold)',fontWeight:500 }}>{fmtR(o.total)}</td>
                         <td><span className={`pill pill-${o.status==='fulfilled'?'green':o.status==='pending'?'gold':'red'}`}>{o.status}</span></td>
-                        <td style={{ color:'var(--dim)',fontSize:12 }}>{fmtD(o.created_at)}</td>
+                        <td style={{ color:'var(--text-dim)',fontSize:12 }}>{fmtD(o.created_at)}</td>
                         <td>
                           {o.status==='pending'&&(
                             <div style={{ display:'flex',gap:6 }}>
@@ -562,7 +562,7 @@ export default function Admin() {
                         </td>
                       </tr>
                     ))}
-                    {orders.length===0&&<tr><td colSpan="6" style={{ color:'var(--dim)',textAlign:'center',padding:24 }}>No retail orders.</td></tr>}
+                    {orders.length===0&&<tr><td colSpan="6" style={{ color:'var(--text-dim)',textAlign:'center',padding:24 }}>No retail orders.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -576,12 +576,12 @@ export default function Admin() {
                       return (
                         <tr key={o.id}>
                           <td style={{ fontWeight:500 }}>{memberById[o.member_id]||'?'}</td>
-                          <td style={{ color:'var(--muted)',fontSize:12 }}>{pkg?.name||'?'}</td>
+                          <td style={{ color:'var(--text-muted)',fontSize:12 }}>{pkg?.name||'?'}</td>
                           <td>{o.quantity}</td>
                           <td style={{ color:'var(--gold)',fontWeight:500 }}>{fmtR(o.total)}</td>
-                          <td style={{ color:'var(--muted)' }}>{fmtR(o.pool_contribution)}</td>
+                          <td style={{ color:'var(--text-muted)' }}>{fmtR(o.pool_contribution)}</td>
                           <td><span className={`pill pill-${o.status==='fulfilled'?'green':o.status==='pending'?'gold':'red'}`}>{o.status}</span></td>
-                          <td style={{ color:'var(--dim)',fontSize:12 }}>{fmtD(o.created_at)}</td>
+                          <td style={{ color:'var(--text-dim)',fontSize:12 }}>{fmtD(o.created_at)}</td>
                           <td>
                             {o.status==='pending'&&(
                               <button className="btn btn-gold btn-xs" disabled={busy===o.id}
@@ -593,7 +593,7 @@ export default function Admin() {
                         </tr>
                       );
                     })}
-                    {pkgOrders.length===0&&<tr><td colSpan="8" style={{ color:'var(--dim)',textAlign:'center',padding:24 }}>No package orders.</td></tr>}
+                    {pkgOrders.length===0&&<tr><td colSpan="8" style={{ color:'var(--text-dim)',textAlign:'center',padding:24 }}>No package orders.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -605,8 +605,8 @@ export default function Admin() {
                 <div className="section-label" style={{ marginBottom: 12 }}>Monthly billing run · {new Date().toISOString().slice(0,7)}</div>
                 <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:18 }}>
                   {[['Active members',activeMembers.length],['Pool total',fmtR(poolTotal)],['Rep share 30%',fmtR(poolTotal*0.3)],['OHMI retention 70%',fmtR(poolTotal*0.7)],['Foundation est.',fmtR(activeMembers.length*2*15)],['Period',new Date().toISOString().slice(0,7)]].map(([l,v])=>(
-                    <div key={l} style={{ padding:'12px 14px',background:'var(--dark)',border:'1px solid var(--border)',borderRadius:'var(--r-md)' }}>
-                      <div style={{ fontSize:10,color:'var(--dim)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:4 }}>{l}</div>
+                    <div key={l} style={{ padding:'12px 14px',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'var(--r-md)' }}>
+                      <div style={{ fontSize:10,color:'var(--text-dim)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:4 }}>{l}</div>
                       <div style={{ fontFamily:'var(--display)',fontSize:18,color:'var(--gold)',fontWeight:600 }}>{v}</div>
                     </div>
                   ))}
@@ -614,7 +614,7 @@ export default function Admin() {
                 <button className="btn btn-gold" disabled={busy==='billing'} onClick={runBilling}>
                   {busy==='billing' ? 'Running billing…' : `Run billing · ${new Date().toISOString().slice(0,7)}`}
                 </button>
-                <p style={{ fontSize:11,color:'var(--dim)',marginTop:10,lineHeight:1.6 }}>
+                <p style={{ fontSize:11,color:'var(--text-dim)',marginTop:10,lineHeight:1.6 }}>
                   Records pool contributions, distributes 30% to ranked reps pro-rata, allocates foundation funds. Idempotent — safe to re-run.
                 </p>
               </div>
@@ -629,7 +629,7 @@ export default function Admin() {
                           <td style={{ fontWeight:500 }}>{r.out_member_name}</td>
                           <td><span className={`pill pill-${r.out_rank_name!=='Unranked'?'gold':'grey'}`}>{r.out_rank_name}</span></td>
                           <td style={{ fontFamily:'var(--display)',fontSize:18,color:'var(--gold)',fontWeight:600 }}>{fmtR(r.out_pool_share)}</td>
-                          <td style={{ fontSize:12,color:'var(--dim)' }}>{r.out_message}</td>
+                          <td style={{ fontSize:12,color:'var(--text-dim)' }}>{r.out_message}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -647,8 +647,8 @@ export default function Admin() {
                         <tr key={p.id}>
                           <td style={{ fontWeight:500 }}>{memberById[p.member_id]}</td>
                           <td style={{ fontFamily:'var(--display)',fontSize:18,color:'var(--red)',fontWeight:600 }}>{fmtR(p.amount)}</td>
-                          <td style={{ color:'var(--dim)',fontSize:12 }}>{fmtD(p.created_at)}</td>
-                          <td style={{ color:'var(--muted)',fontSize:12 }}>{p.note}</td>
+                          <td style={{ color:'var(--text-dim)',fontSize:12 }}>{fmtD(p.created_at)}</td>
+                          <td style={{ color:'var(--text-muted)',fontSize:12 }}>{p.note}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -673,7 +673,7 @@ export default function Admin() {
                         <td style={{ fontFamily:'var(--display)',fontSize:20,color:'var(--gold)',fontWeight:600 }}>{fmtR(b.balance)}</td>
                       </tr>
                     ))}
-                    {balances.every(b=>Number(b.total_earned)===0)&&<tr><td colSpan="5" style={{ color:'var(--dim)',textAlign:'center',padding:24 }}>Run billing to populate balances.</td></tr>}
+                    {balances.every(b=>Number(b.total_earned)===0)&&<tr><td colSpan="5" style={{ color:'var(--text-dim)',textAlign:'center',padding:24 }}>Run billing to populate balances.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -684,15 +684,15 @@ export default function Admin() {
                   <tbody>
                     {ledger.map(l=>(
                       <tr key={l.id}>
-                        <td style={{ color:'var(--dim)',fontSize:12 }}>{fmtD(l.created_at)}</td>
+                        <td style={{ color:'var(--text-dim)',fontSize:12 }}>{fmtD(l.created_at)}</td>
                         <td style={{ fontWeight:500 }}>{memberById[l.member_id]||'?'}</td>
                         <td><span className={`pill pill-${l.entry_type==='payout'?'red':l.entry_type==='pool_share'?'gold':'grey'}`}>{l.entry_type.replace('_',' ')}</span></td>
-                        <td style={{ color:'var(--dim)',fontSize:12 }}>{l.period?.slice(0,7)||'—'}</td>
-                        <td style={{ color:'var(--muted)',fontSize:12 }}>{l.note}</td>
+                        <td style={{ color:'var(--text-dim)',fontSize:12 }}>{l.period?.slice(0,7)||'—'}</td>
+                        <td style={{ color:'var(--text-muted)',fontSize:12 }}>{l.note}</td>
                         <td style={{ textAlign:'right',fontFamily:'var(--display)',fontSize:18,fontWeight:600,color:l.entry_type==='payout'?'var(--red)':'var(--gold)' }}>{fmtR(l.amount)}</td>
                       </tr>
                     ))}
-                    {ledger.length===0&&<tr><td colSpan="6" style={{ color:'var(--dim)',textAlign:'center',padding:24 }}>No ledger entries.</td></tr>}
+                    {ledger.length===0&&<tr><td colSpan="6" style={{ color:'var(--text-dim)',textAlign:'center',padding:24 }}>No ledger entries.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -710,7 +710,7 @@ export default function Admin() {
               </div>
               <div className="card" style={{ borderLeft:'3px solid var(--gold)',paddingLeft:20 }}>
                 <div style={{ fontFamily:'var(--display)',fontSize:20,color:'var(--gold)',marginBottom:8 }}>Every kilogram feeds a child in Bitou.</div>
-                <p style={{ fontSize:13,color:'var(--muted)',lineHeight:1.8 }}>
+                <p style={{ fontSize:13,color:'var(--text-muted)',lineHeight:1.8 }}>
                   R15 per kilogram is a fixed structural cost — not a discretionary donation. Allocated automatically on every billing run and tracked here for full transparency.
                 </p>
               </div>
@@ -724,11 +724,11 @@ export default function Admin() {
                         <td style={{ fontWeight:500 }}>{f.period?.slice(0,7)||'—'}</td>
                         <td style={{ color:'var(--gold)',fontWeight:500 }}>{Number(f.kg_equivalent).toFixed(1)} kg</td>
                         <td style={{ fontFamily:'var(--display)',fontSize:18,color:'var(--gold)',fontWeight:600 }}>{fmtR(f.amount)}</td>
-                        <td style={{ color:'var(--muted)',fontSize:12 }}>{f.note}</td>
-                        <td style={{ color:'var(--dim)',fontSize:12 }}>{fmtD(f.created_at)}</td>
+                        <td style={{ color:'var(--text-muted)',fontSize:12 }}>{f.note}</td>
+                        <td style={{ color:'var(--text-dim)',fontSize:12 }}>{fmtD(f.created_at)}</td>
                       </tr>
                     ))}
-                    {foundation.length===0&&<tr><td colSpan="5" style={{ color:'var(--dim)',textAlign:'center',padding:24 }}>Run billing to allocate foundation funds.</td></tr>}
+                    {foundation.length===0&&<tr><td colSpan="5" style={{ color:'var(--text-dim)',textAlign:'center',padding:24 }}>Run billing to allocate foundation funds.</td></tr>}
                   </tbody>
                 </table>
               </div>
