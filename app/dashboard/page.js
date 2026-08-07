@@ -269,6 +269,15 @@ export default function Dashboard() {
   return (
     <>
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+      {/* Mobile topbar */}
+      <div className="mobile-topbar">
+        <span className="mobile-topbar-logo">OHMI.</span>
+        <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+          <span className="topbar-badge topbar-badge-gold" style={{ fontSize:9 }}>{currentRank?.name||'Unranked'}</span>
+          <div className="rail-avatar" style={{ width:28, height:28, fontSize:11 }}>{me?.full_name?.[0]||'?'}</div>
+        </div>
+      </div>
+
       <div className="app-shell">
 
         {/* Rail */}
@@ -311,7 +320,7 @@ export default function Dashboard() {
             {/* ── OVERVIEW ── */}
             {tab === 'home' && <>
               {/* Wallet cards */}
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12 }}>
                 {/* Earnings wallet */}
                 <div className="wallet wallet-earn">
                   <div className="wallet-label">Earnings wallet</div>
@@ -373,7 +382,7 @@ export default function Dashboard() {
                       {currentRank?.name || 'Unranked'} → <span style={{ color:'var(--gold)' }}>{nextRank.name}</span>
                     </span>
                   </div>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:10 }}>
                     {[['Left', leftCount, nextRank.left], ['Right', rightCount, nextRank.right]].map(([label, cur, need]) => (
                       <div key={label} style={{ background:'var(--dark)', border:'1px solid var(--border)', borderRadius:'var(--r-md)', padding:'12px 14px' }}>
                         <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
@@ -434,7 +443,7 @@ export default function Dashboard() {
                       <div style={{ fontSize:10, color:'var(--dim)', letterSpacing:'0.14em', textTransform:'uppercase' }}>Uganda Bugisu AA</div>
                     </div>
                   </div>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:16 }}>
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))', gap:10, marginBottom:16 }}>
                     {[
                       ['Monthly', `R${sub?.amount||1500}`],
                       ['Pool contribution', `R${sub?.pool_contribution||500}`],
@@ -716,7 +725,7 @@ export default function Dashboard() {
 
             {/* ── LIFESTYLE WALLET ── */}
             {tab === 'lifestyle' && <>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:12 }}>
                 <div className="wallet wallet-travel">
                   <div className="wallet-label">Lifestyle wallet</div>
                   <div className="wallet-amount" style={{ color:'var(--blue)' }}>{pointBalance.toLocaleString()} pts</div>
@@ -834,6 +843,30 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Mobile bottom nav */}
+      <nav className="mobile-nav">
+        <div className="mobile-nav-inner">
+          {[
+            { id:'home',      icon:'ti-layout-dashboard', label:'Home' },
+            { id:'network',   icon:'ti-binary-tree-2',    label:'Network' },
+            { id:'shop',      icon:'ti-shopping-bag',     label:'Shop' },
+            { id:'earnings',  icon:'ti-coin',             label:'Earnings' },
+            { id:'lifestyle', icon:'ti-sparkles',         label:'Lifestyle' },
+          ].map(t => (
+            <button key={t.id} className={`mobile-nav-item${tab===t.id?' on':''}`}
+              onClick={() => switchTo(t.id)} aria-label={t.label}>
+              <i className={`ti ${t.icon}`} aria-hidden="true" />
+              <span>{t.label}</span>
+              {t.id==='shop' && cartQty>0 && <span className="m-badge">{cartQty}</span>}
+            </button>
+          ))}
+          <button className="mobile-nav-item" onClick={() => switchTo(tab==='ranks'?'home':'ranks')} aria-label="More">
+            <i className="ti ti-dots" aria-hidden="true" />
+            <span>More</span>
+          </button>
+        </div>
+      </nav>
 
       {/* Register modal */}
       {registerSlot && (
