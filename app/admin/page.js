@@ -312,17 +312,8 @@ export default function Admin() {
           </nav>
           <div className="rail-divider" />
           <div className="rail-bottom">
-            <Link href="/dashboard">
-              <button className="rail-item" data-tip="← Member portal" aria-label="Member portal"
-                style={{color:'var(--primary)'}}>
-                <i className="ti ti-layout-dashboard" aria-hidden="true" />
-              </button>
-            </Link>
-            <Link href="/login">
-              <button className="rail-item" data-tip="Sign out" aria-label="Sign out">
-                <i className="ti ti-logout" aria-hidden="true" />
-              </button>
-            </Link>
+            <a href="/dashboard" className="rail-item" data-tip="← Member portal" aria-label="Member portal" style={{color:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center'}}><i className="ti ti-layout-dashboard" aria-hidden="true"/></a>
+            <a href="/login" className="rail-item" data-tip="Sign out" aria-label="Sign out" style={{display:'flex',alignItems:'center',justifyContent:'center'}}><i className="ti ti-logout" aria-hidden="true"/></a>
           </div>
         </aside>
 
@@ -803,24 +794,24 @@ export default function Admin() {
       {/* Mobile bottom nav */}
       <nav className="mobile-nav">
         <div className="mobile-nav-inner">
-          <button className={`mobile-nav-item${tab==='dashboard'?' on':''}`} onClick={()=>setTab('dashboard')} aria-label="Home">
+          <button className={`mobile-nav-item${tab==='dashboard'?' on':''}`} onClick={()=>setTab('dashboard')}>
             <i className="ti ti-layout-dashboard" aria-hidden="true"/><span>Home</span>
           </button>
-          <button className={`mobile-nav-item${tab==='members'?' on':''}`} onClick={()=>setTab('members')} aria-label="Members">
+          <button className={`mobile-nav-item${tab==='members'?' on':''}`} onClick={()=>setTab('members')}>
             <i className="ti ti-users" aria-hidden="true"/><span>Members</span>
             {pendingActivations.length>0&&<span className="m-badge">{pendingActivations.length}</span>}
           </button>
-          <button className={`mobile-nav-item${tab==='network'?' on':''}`} onClick={()=>setTab('network')} aria-label="Tree">
+          <button className={`mobile-nav-item${tab==='network'?' on':''}`} onClick={()=>setTab('network')}>
             <i className="ti ti-binary-tree-2" aria-hidden="true"/><span>Tree</span>
           </button>
-          <button className={`mobile-nav-item${tab==='orders'?' on':''}`} onClick={()=>setTab('orders')} aria-label="Orders">
+          <button className={`mobile-nav-item${tab==='orders'?' on':''}`} onClick={()=>setTab('orders')}>
             <i className="ti ti-shopping-bag" aria-hidden="true"/><span>Orders</span>
             {pendingOrders.length>0&&<span className="m-badge" style={{background:'var(--red)'}}>{pendingOrders.length}</span>}
           </button>
-          <button className={`mobile-nav-item${tab==='billing'?' on':''}`} onClick={()=>setTab('billing')} aria-label="Billing">
-            <i className="ti ti-coin" aria-hidden="true"/><span>Billing</span>
-          </button>
-          <button className={`mobile-nav-item${['ledger','calc','foundation'].includes(tab)?' on':''}`} onClick={()=>setTab(tab==='ledger'?'calc':tab==='calc'?'foundation':'ledger')} aria-label="More">
+          <a href="/dashboard" className="mobile-nav-item" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,textDecoration:'none',color:'var(--text-muted)',flex:1,padding:'6px 2px 8px'}}>
+            <i className="ti ti-user" aria-hidden="true"/><span>Member</span>
+          </a>
+          <button className={`mobile-nav-item${['billing','ledger','calc','foundation','travel'].includes(tab)?' on':''}`} onClick={()=>setTab(tab==='billing'?'ledger':tab==='ledger'?'calc':tab==='calc'?'foundation':tab==='foundation'?'travel':'billing')}>
             <i className="ti ti-dots" aria-hidden="true"/><span>More</span>
           </button>
         </div>
