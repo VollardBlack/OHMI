@@ -665,20 +665,25 @@ export default function Dashboard() {
       {/* Mobile bottom nav */}
       <nav className="mobile-nav">
         <div className="mobile-nav-inner">
-          {MOBILE_NAV.map(item=>(
-            item.href ? (
-              <Link key={item.href} href={item.href}>
-                <button className="mobile-nav-item" aria-label={item.label}>
-                  <i className={`ti ${item.icon}`} aria-hidden="true"/><span>{item.label}</span>
-                </button>
-              </Link>
-            ) : (
-              <button key={item.id} className={`mobile-nav-item${tab===item.id?' on':''}`} onClick={()=>go(item.id)} aria-label={item.label}>
-                <i className={`ti ${item.icon}`} aria-hidden="true"/><span>{item.label}</span>
-                {item.id==='shop'&&cartQty>0&&<span className="m-badge">{cartQty}</span>}
-              </button>
-            )
-          ))}
+          <button className={`mobile-nav-item${tab==='home'?' on':''}`} onClick={()=>go('home')}>
+            <i className="ti ti-layout-dashboard" aria-hidden="true"/><span>Home</span>
+          </button>
+          <button className={`mobile-nav-item${tab==='network'?' on':''}`} onClick={()=>go('network')}>
+            <i className="ti ti-binary-tree-2" aria-hidden="true"/><span>Network</span>
+          </button>
+          <button className={`mobile-nav-item${tab==='shop'?' on':''}`} onClick={()=>go('shop')}>
+            <i className="ti ti-shopping-bag" aria-hidden="true"/><span>Shop</span>
+            {cartQty>0&&<span className="m-badge">{cartQty}</span>}
+          </button>
+          <button className={`mobile-nav-item${tab==='earnings'?' on':''}`} onClick={()=>go('earnings')}>
+            <i className="ti ti-coin" aria-hidden="true"/><span>Earnings</span>
+          </button>
+          <a href="/travel" className="mobile-nav-item" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,textDecoration:'none',color:'var(--text-muted)',flex:1,padding:'6px 2px 8px'}}>
+            <i className="ti ti-plane" aria-hidden="true"/><span>Travel</span>
+          </a>
+          <a href="/admin" className="mobile-nav-item" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,textDecoration:'none',color:'var(--text-muted)',flex:1,padding:'6px 2px 8px'}}>
+            <i className="ti ti-settings" aria-hidden="true"/><span>Admin</span>
+          </a>
         </div>
       </nav>
 
