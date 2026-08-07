@@ -740,24 +740,25 @@ export default function Admin() {
       {/* Mobile bottom nav */}
       <nav className="mobile-nav">
         <div className="mobile-nav-inner">
-          {[
-            { id:'dashboard', icon:'ti-layout-dashboard', label:'Home' },
-            { id:'members',   icon:'ti-users',            label:'Members' },
-            { id:'network',   icon:'ti-binary-tree-2',    label:'Tree' },
-            { id:'orders',    icon:'ti-shopping-bag',     label:'Orders' },
-            { id:'billing',   icon:'ti-coin',             label:'Billing' },
-          ].map(t => (
-            <button key={t.id} className={`mobile-nav-item${tab===t.id?' on':''}`}
-              onClick={() => setTab(t.id)} aria-label={t.label}>
-              <i className={`ti ${t.icon}`} aria-hidden="true" />
-              <span>{t.label}</span>
-              {t.id==='members' && pendingActivations.length>0 && <span className="m-badge">{pendingActivations.length}</span>}
-              {t.id==='orders'  && pendingOrders.length>0       && <span className="m-badge" style={{ background:'var(--red)' }}>{pendingOrders.length}</span>}
-            </button>
-          ))}
-          <button className="mobile-nav-item" onClick={() => setTab(tab==='calc'?'dashboard':'calc')} aria-label="More">
-            <i className="ti ti-dots" aria-hidden="true" />
-            <span>More</span>
+          <button className={`mobile-nav-item${tab==='dashboard'?' on':''}`} onClick={()=>setTab('dashboard')} aria-label="Home">
+            <i className="ti ti-layout-dashboard" aria-hidden="true"/><span>Home</span>
+          </button>
+          <button className={`mobile-nav-item${tab==='members'?' on':''}`} onClick={()=>setTab('members')} aria-label="Members">
+            <i className="ti ti-users" aria-hidden="true"/><span>Members</span>
+            {pendingActivations.length>0&&<span className="m-badge">{pendingActivations.length}</span>}
+          </button>
+          <button className={`mobile-nav-item${tab==='network'?' on':''}`} onClick={()=>setTab('network')} aria-label="Tree">
+            <i className="ti ti-binary-tree-2" aria-hidden="true"/><span>Tree</span>
+          </button>
+          <button className={`mobile-nav-item${tab==='orders'?' on':''}`} onClick={()=>setTab('orders')} aria-label="Orders">
+            <i className="ti ti-shopping-bag" aria-hidden="true"/><span>Orders</span>
+            {pendingOrders.length>0&&<span className="m-badge" style={{background:'var(--red)'}}>{pendingOrders.length}</span>}
+          </button>
+          <button className={`mobile-nav-item${tab==='billing'?' on':''}`} onClick={()=>setTab('billing')} aria-label="Billing">
+            <i className="ti ti-coin" aria-hidden="true"/><span>Billing</span>
+          </button>
+          <button className={`mobile-nav-item${['ledger','calc','foundation'].includes(tab)?' on':''}`} onClick={()=>setTab(tab==='ledger'?'calc':tab==='calc'?'foundation':'ledger')} aria-label="More">
+            <i className="ti ti-dots" aria-hidden="true"/><span>More</span>
           </button>
         </div>
       </nav>
