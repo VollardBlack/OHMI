@@ -48,12 +48,12 @@ export default function Home() {
       </header>
 
       {/* Hero */}
-      <section className="hero" style={{ borderBottom: '1px solid var(--border)', background: 'var(--dark)' }}>
+      <section className="hero" style={{ borderBottom: '1px solid rgba(0,0,0,0.12)', background: 'var(--maroon)' }}>
         <div className="container">
           <div className="kicker">Single Origin · Uganda</div>
           <h1 className="hero-title">Coffee roasted<br />with <em>purpose.</em></h1>
           <div className="gold-rule" />
-          <p style={{ color: 'var(--muted)', fontSize: 15, lineHeight: 1.8, maxWidth: '48ch', marginTop: 4 }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: 15, lineHeight: 1.8, maxWidth: '48ch', marginTop: 4 }}>
             Uganda Bugisu AA from the slopes of Mount Elgon. Contract-roasted in small batches by Wiara Coffee.
             Every kilogram puts R15 toward feeding children in the Bitou region.
           </p>
@@ -67,13 +67,13 @@ export default function Home() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16, marginBottom: 32 }}>
               {PRODUCTS.map(p => (
                 <div key={p.id} className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                  <div style={{ background: 'var(--dark)', borderRadius: 'var(--r-md)', padding: '32px 24px', border: '1px solid var(--border)', textAlign: 'center' }}>
+                  <div style={{ background: 'var(--maroon)', borderRadius: 'var(--r-md)', padding: '32px 24px', border: '1px solid var(--border)', textAlign: 'center' }}>
                     <div style={{ fontFamily: 'var(--display)', fontSize: 56, fontWeight: 600, color: 'var(--gold)', lineHeight: 1 }}>{p.size}</div>
-                    <div style={{ fontSize: 10, color: 'var(--dim)', letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 8 }}>{p.origin}</div>
+                    <div style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.18em', textTransform: 'uppercase', marginTop: 8 }}>{p.origin}</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 4 }}>{p.name} — {p.size}</div>
-                    <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16, lineHeight: 1.6 }}>{p.notes}</div>
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.6 }}>{p.notes}</div>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <span style={{ fontFamily: 'var(--display)', fontSize: 28, fontWeight: 600, color: 'var(--gold)' }}>R{p.price}</span>
                       {cart[p.id] ? (
@@ -119,7 +119,7 @@ export default function Home() {
             <div className="card" style={{ marginBottom: 16 }}>
               {items.map(i => (
                 <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid var(--border)', fontSize: 13 }}>
-                  <span style={{ color: 'var(--muted)' }}>{i.name} {i.size} × {i.qty}</span>
+                  <span style={{ color: 'var(--text-muted)' }}>{i.name} {i.size} × {i.qty}</span>
                   <span style={{ color: 'var(--gold)', fontWeight: 500 }}>R{i.price * i.qty}</span>
                 </div>
               ))}
@@ -147,7 +147,7 @@ export default function Home() {
                 </button>
               </div>
             </div>
-            <p style={{ fontSize: 11, color: 'var(--dim)', textAlign: 'center', lineHeight: 1.6 }}>
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.6 }}>
               Payment on delivery or EFT. We'll confirm your order by email within 24 hours.
             </p>
           </div>
@@ -160,10 +160,10 @@ export default function Home() {
             <div style={{ fontSize: 40, marginBottom: 16 }}>☕</div>
             <div className="kicker">Order received</div>
             <h2 style={{ fontFamily: 'var(--display)', fontSize: 32, marginBottom: 14 }}>We roast on Tuesdays.</h2>
-            <p style={{ color: 'var(--muted)', lineHeight: 1.8, marginBottom: 24 }}>
+            <p style={{ color: 'var(--text-muted)', lineHeight: 1.8, marginBottom: 24 }}>
               Your order is confirmed. We'll be in touch within 24 hours to arrange delivery. Your coffee ships fresh within 48 hours of roasting.
             </p>
-            <div style={{ background: 'var(--dark2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 14, marginBottom: 24, fontSize: 12, color: 'var(--dim)', lineHeight: 1.7 }}>
+            <div style={{ background: 'var(--surface-1)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)', padding: 14, marginBottom: 24, fontSize: 12, color: 'var(--text-dim)', lineHeight: 1.7 }}>
               R15 from this order feeds children in the Bitou region. Thank you.
             </div>
             <button className="btn btn-gold" onClick={() => setStep('shop')}>Order more</button>
@@ -171,8 +171,8 @@ export default function Home() {
         </section>
       )}
 
-      <footer style={{ background: 'var(--dark)', borderTop: '1px solid var(--border)', padding: '28px 0' }}>
-        <div className="container" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, fontSize: 11, color: 'var(--dim)', letterSpacing: '0.08em' }}>
+      <footer style={{ background: 'var(--maroon)', borderTop: '1px solid var(--border)', padding: '28px 0' }}>
+        <div className="container" style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, fontSize: 11, color: 'var(--text-dim)', letterSpacing: '0.08em' }}>
           <span>© {new Date().getFullYear()} OHMI COFFEE CO. (PTY) LTD · WESTERN CAPE</span>
           <span>ONE TEAM. ONE DREAM. ONE LEGACY.</span>
         </div>
