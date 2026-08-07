@@ -174,7 +174,7 @@ export default function Join() {
                   <div key={rank} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #1e1e1e', fontSize: 12 }}>
                     <span style={{ color: 'var(--gold)', fontWeight: 700, minWidth: 120 }}>{rank}</span>
                     <span style={{ color: 'var(--text-muted)', minWidth: 60, textAlign: 'center' }}>{req}</span>
-                    <span style={{ color: 'var(--text-primary)', textAlign: 'right', fontSize: 11 }}>{earn}</span>
+                    <span style={{ color: 'var(--text-h)', textAlign: 'right', fontSize: 11 }}>{earn}</span>
                   </div>
                 ))}
                 <p style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 10, lineHeight: 1.7 }}>
@@ -203,7 +203,7 @@ export default function Join() {
               </div>
               <div style={{ background: 'var(--surface-2)', padding: 16, marginBottom: 24, borderLeft: '3px solid #333' }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.8 }}>
-                  <strong style={{ color: 'var(--text-primary)' }}>Payment details</strong><br />
+                  <strong style={{ color: 'var(--text-h)' }}>Payment details</strong><br />
                   Bank: FNB · Account: OHMI Coffee Co. (Pty) Ltd<br />
                   Amount: <strong style={{ color: 'var(--gold)' }}>R2,500</strong><br />
                   Reference: <strong style={{ color: 'var(--gold)' }}>{memberId?.slice(0, 8)?.toUpperCase()}</strong><br />
