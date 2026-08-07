@@ -100,6 +100,7 @@ export default function Dashboard() {
   const [packages,setPackages] = useState([]);
   const [pkgOrders,setPkgOrders] = useState([]);
   const [shopProducts,setShopProducts] = useState([]);
+  const [sizeFilter,setSizeFilter] = useState('all'); // all | 1kg | 250g
   const [cart,setCart] = useState({});
   const [grind,setGrind] = useState({});
   const [shipping,setShipping] = useState({provider:'The Courier Guy',zone:'National (SA)',fee:95,label:'Courier Guy National (2-5 days)'});
@@ -130,7 +131,7 @@ export default function Dashboard() {
     ]);
     setMembers(m.data||[]);setNodes(n.data||[]);setLedger(l.data||[]);
     setPackages(p.data||[]);setPkgOrders(po.data||[]);setLifestyle(ll.data||[]);
-    setShopProducts((pr.data||[]).filter(x=>!x.sku?.includes('BUGISU')));
+    setShopProducts((pr.data||[]).filter(x=>!x.sku?.includes('BUGISU')).sort((a,b)=>a.sort_order-b.sort_order));
     const root=(m.data||[]).find(x=>x.email==='brandon@ohmicoffee.co.za')||(m.data||[])[0];
     setMe(root||null);
     setSub((s.data||[]).find(x=>x.member_id===root?.id)||null);
@@ -579,7 +580,7 @@ export default function Dashboard() {
 
                   {/* Product grid */}
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:16}}>
-                    {shopProducts.map(p=>{
+                    {shopProducts.filter(p=>sizeFilter==='all'||(sizeFilter==='250g'&&p.weight_g==250)||(sizeFilter==='1kg'&&p.weight_g==1000)).map(p=>{
                       const qty=cart[p.id]||0;
                       const price=unitPrice(p);
                       return(
