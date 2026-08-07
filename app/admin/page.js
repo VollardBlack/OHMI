@@ -138,13 +138,13 @@ function ProfitCalc() {
         </div>
 
         <div className="calc-result">
-          <div style={{ fontSize: 11, color: 'var(--gold)', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
+          <div style={{ fontSize: 11, color: 'var(--amber)', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 600, marginBottom: 4 }}>
             {pkg.name}
           </div>
 
           <div className="calc-result-item">
             <span className="calc-result-label">Gross profit</span>
-            <span className="calc-result-val" style={{ color: grossProfit > 0 ? 'var(--gold)' : 'var(--red)' }}>
+            <span className="calc-result-val" style={{ color: grossProfit > 0 ? 'var(--amber)' : 'var(--red)' }}>
               {fmtR(Math.round(grossProfit))}
             </span>
             <span className="calc-result-sub">per unit after COGS</span>
@@ -154,7 +154,7 @@ function ProfitCalc() {
 
           <div className="calc-result-item">
             <span className="calc-result-label">Margin %</span>
-            <span className="calc-result-val" style={{ color: marginPct > 0 ? 'var(--gold)' : 'var(--red)', fontSize: 32 }}>
+            <span className="calc-result-val" style={{ color: marginPct > 0 ? 'var(--amber)' : 'var(--red)', fontSize: 32 }}>
               {Math.round(marginPct)}%
             </span>
             <span className="calc-result-sub">of retail price</span>
@@ -184,7 +184,7 @@ function ProfitCalc() {
               {[10,50,100].map(u => (
                 <div key={u} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
                   <span style={{ color: 'var(--text-dim)' }}>{u} units</span>
-                  <span style={{ color: 'var(--gold)', fontWeight: 500 }}>{fmtR(Math.round(ohmiTotal * u))}</span>
+                  <span style={{ color: 'var(--amber)', fontWeight: 500 }}>{fmtR(Math.round(ohmiTotal * u))}</span>
                 </div>
               ))}
             </div>
@@ -312,7 +312,7 @@ export default function Admin() {
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
       {/* Mobile topbar */}
       <div className="mobile-topbar">
-        <span className="mobile-topbar-logo" style={{ color:"var(--gold3)" }}>OHMI Admin</span>
+        <span className="mobile-topbar-logo">Admin</span>
         <div style={{ display:'flex', gap:8 }}>
           <span className="topbar-badge topbar-badge-gold" style={{ fontSize:9 }}>{activeMembers.length} active</span>
         </div>
@@ -384,7 +384,7 @@ export default function Admin() {
               {pendingActivations.length > 0 && (
                 <div className="card card-gold card-flush">
                   <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--gold-border)', display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <i className="ti ti-alert-circle" style={{ color: 'var(--gold)', fontSize: 16 }} aria-hidden="true" />
+                    <i className="ti ti-alert-circle" style={{ color: 'var(--amber)', fontSize: 16 }} aria-hidden="true" />
                     <span className="section-label">Pending activations — action required</span>
                   </div>
                   <table className="data-table">
@@ -397,7 +397,7 @@ export default function Admin() {
                             <td style={{ fontWeight: 500 }}>{m?.full_name}</td>
                             <td style={{ color: 'var(--text-muted)', fontSize: 12 }}>{m?.email}</td>
                             <td style={{ color: 'var(--text-dim)', fontSize: 12 }}>{fmtD(a.created_at)}</td>
-                            <td style={{ color: 'var(--gold)', fontWeight: 500 }}>{fmtR(a.amount)}</td>
+                            <td style={{ color: 'var(--amber)', fontWeight: 500 }}>{fmtR(a.amount)}</td>
                             <td>
                               <button className="btn btn-gold btn-xs" disabled={busy===a.id}
                                 onClick={() => approveActivation(a.id, a.member_id)}>
@@ -422,7 +422,7 @@ export default function Admin() {
                   ].map(([l,v,s]) => (
                     <div key={l} style={{ padding: '14px 16px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
                       <div style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>{l}</div>
-                      <div style={{ fontFamily: 'var(--display)', fontSize: 24, color: 'var(--gold)', fontWeight: 600 }}>{v}</div>
+                      <div style={{ fontFamily: 'var(--display)', fontSize: 24, color: 'var(--amber)', fontWeight: 600 }}>{v}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>{s}</div>
                     </div>
                   ))}
@@ -462,7 +462,7 @@ export default function Admin() {
                             ) : <span style={{ color:'var(--text-dim)',fontSize:12 }}>—</span>}
                           </td>
                           <td><span className={`pill pill-${sub?.status==='active'?'green':'grey'}`}>{sub?`R${sub.amount}/mo`:'None'}</span></td>
-                          <td style={{ color:'var(--gold)',fontWeight:500 }}>{Number(bal?.balance)>0?fmtR(bal.balance):'—'}</td>
+                          <td style={{ color:'var(--amber)',fontWeight:500 }}>{Number(bal?.balance)>0?fmtR(bal.balance):'—'}</td>
                           <td style={{ color:'var(--text-dim)',fontSize:12 }}>{fmtD(m.created_at)}</td>
                           <td>
                             {m.status==='active' && (
@@ -514,10 +514,10 @@ export default function Admin() {
                         <tr key={n.node_id||n.id}>
                           <td style={{ fontWeight:500 }}>{m?.full_name||'?'}</td>
                           <td><span className={`pill pill-${m?.status==='active'?'green':'grey'}`}>{m?.status||'?'}</span></td>
-                          <td style={{ color:n.leg==='L'?'var(--blue)':n.leg==='R'?'var(--gold)':'var(--text-muted)', fontWeight:500 }}>{n.leg||'Root'}</td>
+                          <td style={{ color:n.leg==='L'?'var(--blue)':n.leg==='R'?'var(--amber)':'var(--text-muted)', fontWeight:500 }}>{n.leg||'Root'}</td>
                           <td style={{ color:'var(--text-dim)' }}>{n.depth}</td>
-                          <td style={{ color:'var(--gold)',fontWeight:500 }}>{n.left_count}</td>
-                          <td style={{ color:'var(--gold)',fontWeight:500 }}>{n.right_count}</td>
+                          <td style={{ color:'var(--amber)',fontWeight:500 }}>{n.left_count}</td>
+                          <td style={{ color:'var(--amber)',fontWeight:500 }}>{n.right_count}</td>
                           <td><span className={`pill pill-${n.subscribed?'green':'red'}`}>{n.subscribed?'Yes':'No'}</span></td>
                         </tr>
                       );
@@ -543,7 +543,7 @@ export default function Admin() {
                       <tr key={o.id}>
                         <td style={{ fontWeight:500 }}>{o.customer_name}<div style={{ fontSize:11,color:'var(--text-dim)' }}>{o.customer_email}</div></td>
                         <td style={{ color:'var(--text-muted)',fontSize:12 }}>{Array.isArray(o.items)?o.items.map(i=>`${i.size}×${i.qty}`).join(', '):'—'}</td>
-                        <td style={{ color:'var(--gold)',fontWeight:500 }}>{fmtR(o.total)}</td>
+                        <td style={{ color:'var(--amber)',fontWeight:500 }}>{fmtR(o.total)}</td>
                         <td><span className={`pill pill-${o.status==='fulfilled'?'green':o.status==='pending'?'gold':'red'}`}>{o.status}</span></td>
                         <td style={{ color:'var(--text-dim)',fontSize:12 }}>{fmtD(o.created_at)}</td>
                         <td>
@@ -578,7 +578,7 @@ export default function Admin() {
                           <td style={{ fontWeight:500 }}>{memberById[o.member_id]||'?'}</td>
                           <td style={{ color:'var(--text-muted)',fontSize:12 }}>{pkg?.name||'?'}</td>
                           <td>{o.quantity}</td>
-                          <td style={{ color:'var(--gold)',fontWeight:500 }}>{fmtR(o.total)}</td>
+                          <td style={{ color:'var(--amber)',fontWeight:500 }}>{fmtR(o.total)}</td>
                           <td style={{ color:'var(--text-muted)' }}>{fmtR(o.pool_contribution)}</td>
                           <td><span className={`pill pill-${o.status==='fulfilled'?'green':o.status==='pending'?'gold':'red'}`}>{o.status}</span></td>
                           <td style={{ color:'var(--text-dim)',fontSize:12 }}>{fmtD(o.created_at)}</td>
@@ -607,7 +607,7 @@ export default function Admin() {
                   {[['Active members',activeMembers.length],['Pool total',fmtR(poolTotal)],['Rep share 30%',fmtR(poolTotal*0.3)],['OHMI retention 70%',fmtR(poolTotal*0.7)],['Foundation est.',fmtR(activeMembers.length*2*15)],['Period',new Date().toISOString().slice(0,7)]].map(([l,v])=>(
                     <div key={l} style={{ padding:'12px 14px',background:'var(--surface-2)',border:'1px solid var(--border)',borderRadius:'var(--r-md)' }}>
                       <div style={{ fontSize:10,color:'var(--text-dim)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:4 }}>{l}</div>
-                      <div style={{ fontFamily:'var(--display)',fontSize:18,color:'var(--gold)',fontWeight:600 }}>{v}</div>
+                      <div style={{ fontFamily:'var(--display)',fontSize:18,color:'var(--amber)',fontWeight:600 }}>{v}</div>
                     </div>
                   ))}
                 </div>
@@ -628,7 +628,7 @@ export default function Admin() {
                         <tr key={i}>
                           <td style={{ fontWeight:500 }}>{r.out_member_name}</td>
                           <td><span className={`pill pill-${r.out_rank_name!=='Unranked'?'gold':'grey'}`}>{r.out_rank_name}</span></td>
-                          <td style={{ fontFamily:'var(--display)',fontSize:18,color:'var(--gold)',fontWeight:600 }}>{fmtR(r.out_pool_share)}</td>
+                          <td style={{ fontFamily:'var(--display)',fontSize:18,color:'var(--amber)',fontWeight:600 }}>{fmtR(r.out_pool_share)}</td>
                           <td style={{ fontSize:12,color:'var(--text-dim)' }}>{r.out_message}</td>
                         </tr>
                       ))}
@@ -668,9 +668,9 @@ export default function Admin() {
                       <tr key={b.member_id}>
                         <td style={{ fontWeight:500 }}>{b.full_name}</td>
                         <td><span className={`pill pill-${b.status==='active'?'green':'grey'}`}>{b.status}</span></td>
-                        <td style={{ color:'var(--gold)',fontWeight:500 }}>{fmtR(b.total_earned)}</td>
+                        <td style={{ color:'var(--amber)',fontWeight:500 }}>{fmtR(b.total_earned)}</td>
                         <td style={{ color:'var(--red)' }}>{fmtR(b.total_paid)}</td>
-                        <td style={{ fontFamily:'var(--display)',fontSize:20,color:'var(--gold)',fontWeight:600 }}>{fmtR(b.balance)}</td>
+                        <td style={{ fontFamily:'var(--display)',fontSize:20,color:'var(--amber)',fontWeight:600 }}>{fmtR(b.balance)}</td>
                       </tr>
                     ))}
                     {balances.every(b=>Number(b.total_earned)===0)&&<tr><td colSpan="5" style={{ color:'var(--text-dim)',textAlign:'center',padding:24 }}>Run billing to populate balances.</td></tr>}
@@ -689,7 +689,7 @@ export default function Admin() {
                         <td><span className={`pill pill-${l.entry_type==='payout'?'red':l.entry_type==='pool_share'?'gold':'grey'}`}>{l.entry_type.replace('_',' ')}</span></td>
                         <td style={{ color:'var(--text-dim)',fontSize:12 }}>{l.period?.slice(0,7)||'—'}</td>
                         <td style={{ color:'var(--text-muted)',fontSize:12 }}>{l.note}</td>
-                        <td style={{ textAlign:'right',fontFamily:'var(--display)',fontSize:18,fontWeight:600,color:l.entry_type==='payout'?'var(--red)':'var(--gold)' }}>{fmtR(l.amount)}</td>
+                        <td style={{ textAlign:'right',fontFamily:'var(--display)',fontSize:18,fontWeight:600,color:l.entry_type==='payout'?'var(--red)':'var(--amber)' }}>{fmtR(l.amount)}</td>
                       </tr>
                     ))}
                     {ledger.length===0&&<tr><td colSpan="6" style={{ color:'var(--text-dim)',textAlign:'center',padding:24 }}>No ledger entries.</td></tr>}
@@ -709,7 +709,7 @@ export default function Admin() {
                 ))}
               </div>
               <div className="card" style={{ borderLeft:'3px solid var(--gold)',paddingLeft:20 }}>
-                <div style={{ fontFamily:'var(--display)',fontSize:20,color:'var(--gold)',marginBottom:8 }}>Every kilogram feeds a child in Bitou.</div>
+                <div style={{ fontFamily:'var(--display)',fontSize:20,color:'var(--amber)',marginBottom:8 }}>Every kilogram feeds a child in Bitou.</div>
                 <p style={{ fontSize:13,color:'var(--text-muted)',lineHeight:1.8 }}>
                   R15 per kilogram is a fixed structural cost — not a discretionary donation. Allocated automatically on every billing run and tracked here for full transparency.
                 </p>
@@ -722,8 +722,8 @@ export default function Admin() {
                     {foundation.map(f=>(
                       <tr key={f.id}>
                         <td style={{ fontWeight:500 }}>{f.period?.slice(0,7)||'—'}</td>
-                        <td style={{ color:'var(--gold)',fontWeight:500 }}>{Number(f.kg_equivalent).toFixed(1)} kg</td>
-                        <td style={{ fontFamily:'var(--display)',fontSize:18,color:'var(--gold)',fontWeight:600 }}>{fmtR(f.amount)}</td>
+                        <td style={{ color:'var(--amber)',fontWeight:500 }}>{Number(f.kg_equivalent).toFixed(1)} kg</td>
+                        <td style={{ fontFamily:'var(--display)',fontSize:18,color:'var(--amber)',fontWeight:600 }}>{fmtR(f.amount)}</td>
                         <td style={{ color:'var(--text-muted)',fontSize:12 }}>{f.note}</td>
                         <td style={{ color:'var(--text-dim)',fontSize:12 }}>{fmtD(f.created_at)}</td>
                       </tr>
