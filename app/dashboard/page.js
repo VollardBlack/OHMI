@@ -53,10 +53,10 @@ function TreeNode({ node, map, onOpenSlot, depth = 0 }) {
         onClick={() => hasKids && setOpen(o => !o)}
       >
         <div className="tree-name">{node.name}</div>
-        <div style={{ fontSize: 9, color: 'var(--dim)', marginTop: 2 }}>#{fmtMN(node.memberNumber)}</div>
+        <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 2 }}>#{fmtMN(node.memberNumber)}</div>
         <div className="tree-status" style={{ color: isActive ? 'var(--green)' : 'var(--red)' }}>{node.status}</div>
         <div className="tree-counts">L:{node.lc} · R:{node.rc}</div>
-        {hasKids && <div style={{ fontSize: 9, color: 'var(--dim)', marginTop: 3 }}>{open ? '▲' : '▼'}</div>}
+        {hasKids && <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 3 }}>{open ? '▲' : '▼'}</div>}
       </div>
       {(hasKids || true) && open && (
         <div className="tree-legs">
@@ -117,13 +117,13 @@ function RegisterModal({ parentNodeId, leg, onClose, onSuccess }) {
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(61,8,16,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }}>
       <div className="card" style={{ width: 400, maxWidth: '90vw' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <span style={{ fontFamily: 'var(--display)', fontSize: 20 }}>Register new member</span>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 20 }}>×</button>
         </div>
-        <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 16, padding: '8px 12px', background: 'var(--dark)', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }}>
+        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16, padding: '8px 12px', background: 'var(--surface-2)', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)' }}>
           Placing in <strong style={{ color: 'var(--gold)' }}>{leg === 'L' ? 'left' : 'right'} leg</strong>
         </div>
         {err && <div style={{ fontSize: 12, color: 'var(--red)', marginBottom: 12, padding: '8px 12px', background: 'var(--red-bg)', borderRadius: 'var(--r-sm)' }}>{err}</div>}
@@ -330,7 +330,7 @@ export default function Dashboard() {
                       ? `Auto-pays on 15 ${new Date(Date.now()+30*86400000).toLocaleString('en-ZA',{month:'long'})}`
                       : 'Earns when you hit rank'}
                   </div>
-                  <div style={{ fontSize:11, color:'var(--dim)', marginTop:10, padding:'8px 10px', background:'rgba(0,0,0,0.2)', borderRadius:'var(--r-sm)' }}>
+                  <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:10, padding:'8px 10px', background:'rgba(0,0,0,0.2)', borderRadius:'var(--r-sm)' }}>
                     <i className="ti ti-calendar" aria-hidden="true" style={{ fontSize:11, marginRight:5 }} />
                     Next payout: {nextPayoutDate()}
                   </div>
@@ -351,7 +351,7 @@ export default function Dashboard() {
                     </button>
                   )}
                   {pointBalance === 0 && (
-                    <div style={{ fontSize:11, color:'var(--dim)', marginTop:10 }}>
+                    <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:10 }}>
                       Hit Gold rank to unlock {fmtR(4000)} pts/month
                     </div>
                   )}
@@ -378,30 +378,30 @@ export default function Dashboard() {
                 <div className="card">
                   <div className="section-header">
                     <span className="section-label">Rank progress</span>
-                    <span style={{ fontSize:12, color:'var(--muted)' }}>
+                    <span style={{ fontSize:12, color:'var(--text-muted)' }}>
                       {currentRank?.name || 'Unranked'} → <span style={{ color:'var(--gold)' }}>{nextRank.name}</span>
                     </span>
                   </div>
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))', gap:10 }}>
                     {[['Left', leftCount, nextRank.left], ['Right', rightCount, nextRank.right]].map(([label, cur, need]) => (
-                      <div key={label} style={{ background:'var(--dark)', border:'1px solid var(--border)', borderRadius:'var(--r-md)', padding:'12px 14px' }}>
+                      <div key={label} style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'var(--r-md)', padding:'12px 14px' }}>
                         <div style={{ display:'flex', justifyContent:'space-between', marginBottom:10 }}>
-                          <span style={{ fontSize:11, color:'var(--muted)', letterSpacing:'0.1em', textTransform:'uppercase' }}>{label} leg</span>
+                          <span style={{ fontSize:11, color:'var(--text-muted)', letterSpacing:'0.1em', textTransform:'uppercase' }}>{label} leg</span>
                           <span style={{ fontFamily:'var(--display)', fontSize:18, color: cur>=need?'var(--green)':'var(--white)', fontWeight:600 }}>
-                            {cur}<span style={{ fontSize:13, color:'var(--dim)', fontWeight:400 }}>/{need}</span>
+                            {cur}<span style={{ fontSize:13, color:'var(--text-dim)', fontWeight:400 }}>/{need}</span>
                           </span>
                         </div>
                         <div className="progress-track">
                           <div className={`progress-fill ${cur>=need?'pf-green':'pf-gold'}`} style={{ width:`${Math.min(100,(cur/need)*100)}%` }} />
                         </div>
-                        <div style={{ fontSize:11, color:'var(--dim)', marginTop:6 }}>
+                        <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:6 }}>
                           {cur>=need ? '✓ threshold met' : `${need-cur} more needed`}
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div style={{ marginTop:12, padding:'10px 14px', background:'var(--dark)', borderRadius:'var(--r-sm)', border:'1px solid var(--border)', fontSize:12, color:'var(--muted)', lineHeight:1.6 }}>
-                    <strong style={{ color:'var(--white)', fontWeight:500 }}>Both legs must qualify.</strong>{' '}
+                  <div style={{ marginTop:12, padding:'10px 14px', background:'var(--surface-2)', borderRadius:'var(--r-sm)', border:'1px solid var(--border)', fontSize:12, color:'var(--text-muted)', lineHeight:1.6 }}>
+                    <strong style={{ color:'var(--text-primary)', fontWeight:500 }}>Both legs must qualify.</strong>{' '}
                     Rank is set by your weaker leg.
                     {nextRank.name} unlocks <strong style={{ color:'var(--gold)', fontWeight:500 }}>{fmtR(nextRank.pool)}/month</strong>
                     {nextRank.bonus > 0 && <> + <strong style={{ color:'var(--blue)', fontWeight:500 }}>{fmtR(nextRank.bonus)} lifestyle pts/month</strong></>}.
@@ -412,14 +412,14 @@ export default function Dashboard() {
               {/* Referral */}
               <div className="card">
                 <div className="section-header"><span className="section-label">Your referral link</span></div>
-                <div style={{ background:'var(--dark)', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', padding:'10px 14px', fontSize:12, color:'var(--muted)', wordBreak:'break-all', marginBottom:12 }}>
+                <div style={{ background:'var(--surface-2)', border:'1px solid var(--border)', borderRadius:'var(--r-sm)', padding:'10px 14px', fontSize:12, color:'var(--text-muted)', wordBreak:'break-all', marginBottom:12 }}>
                   {refLink || 'Loading…'}
                 </div>
                 <div style={{ display:'flex', gap:8 }}>
                   <button className="btn btn-gold btn-sm" onClick={() => { navigator.clipboard?.writeText(refLink); flash('Link copied'); }}>Copy link</button>
                   <a className="btn btn-ghost btn-sm" href={`https://wa.me/?text=${encodeURIComponent('Join OHMI Coffee Co.\n'+refLink)}`} target="_blank" rel="noreferrer">WhatsApp</a>
                 </div>
-                <div style={{ marginTop:12, fontSize:11, color:'var(--dim)', lineHeight:1.6, padding:'8px 12px', background:'var(--dark)', borderRadius:'var(--r-sm)', border:'1px solid var(--border)' }}>
+                <div style={{ marginTop:12, fontSize:11, color:'var(--text-dim)', lineHeight:1.6, padding:'8px 12px', background:'var(--surface-2)', borderRadius:'var(--r-sm)', border:'1px solid var(--border)' }}>
                   <i className="ti ti-coins" aria-hidden="true" style={{ marginRight:6, fontSize:11 }} />
                   You earn <strong style={{ color:'var(--gold)' }}>R500</strong> sign-up commission every time someone activates through your link.
                 </div>
@@ -440,7 +440,7 @@ export default function Dashboard() {
                     </div>
                     <div style={{ textAlign:'right' }}>
                       <div style={{ fontFamily:'var(--display)', fontSize:32, color:'var(--gold)', fontWeight:600 }}>1kg</div>
-                      <div style={{ fontSize:10, color:'var(--dim)', letterSpacing:'0.14em', textTransform:'uppercase' }}>Uganda Bugisu AA</div>
+                      <div style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:'0.14em', textTransform:'uppercase' }}>Uganda Bugisu AA</div>
                     </div>
                   </div>
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(130px, 1fr))', gap:10, marginBottom:16 }}>
@@ -449,14 +449,14 @@ export default function Dashboard() {
                       ['Pool contribution', `R${sub?.pool_contribution||500}`],
                       ['OHMI retention', `R${(sub?.amount||1500)-(sub?.pool_contribution||500)}`],
                     ].map(([l,v]) => (
-                      <div key={l} style={{ padding:'12px 14px', background:'var(--dark)', borderRadius:'var(--r-md)', border:'1px solid var(--border)' }}>
-                        <div style={{ fontSize:10, color:'var(--dim)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:5 }}>{l}</div>
+                      <div key={l} style={{ padding:'12px 14px', background:'var(--surface-2)', borderRadius:'var(--r-md)', border:'1px solid var(--border)' }}>
+                        <div style={{ fontSize:10, color:'var(--text-dim)', letterSpacing:'0.1em', textTransform:'uppercase', marginBottom:5 }}>{l}</div>
                         <div style={{ fontFamily:'var(--display)', fontSize:20, color:'var(--gold)', fontWeight:600 }}>{v}</div>
                       </div>
                     ))}
                   </div>
-                  <div style={{ fontSize:12, color:'var(--muted)', lineHeight:1.8, padding:'12px 14px', background:'rgba(0,0,0,0.2)', borderRadius:'var(--r-sm)' }}>
-                    <strong style={{ color:'var(--white)', fontWeight:500 }}>How your R1,500 works:</strong><br />
+                  <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.8, padding:'12px 14px', background:'rgba(0,0,0,0.2)', borderRadius:'var(--r-sm)' }}>
+                    <strong style={{ color:'var(--text-primary)', fontWeight:500 }}>How your R1,500 works:</strong><br />
                     R500 enters the binary commission pool — distributed to ranked reps on the 1st of each month.<br />
                     R1,000 covers your monthly coffee product, roasting, packaging, and OHMI operations.
                   </div>
@@ -466,18 +466,18 @@ export default function Dashboard() {
                   <div style={{ display:'flex', gap:12, alignItems:'center' }}>
                     <span className={`pill pill-${activation?.status==='paid'?'green':'gold'}`}>R2,500 activation — {activation?.status||'pending'}</span>
                     {activation?.status !== 'paid' && (
-                      <span style={{ fontSize:12, color:'var(--muted)' }}>EFT to orders@ohmicoffee.co.za · Ref: {me?.id?.slice(0,8)?.toUpperCase()}</span>
+                      <span style={{ fontSize:12, color:'var(--text-muted)' }}>EFT to orders@ohmicoffee.co.za · Ref: {me?.id?.slice(0,8)?.toUpperCase()}</span>
                     )}
                   </div>
                 </div>
                 <div className="card">
                   <div className="section-label" style={{ marginBottom:10 }}>Payout schedule</div>
-                  <p style={{ fontSize:13, color:'var(--muted)', lineHeight:1.8 }}>
+                  <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.8 }}>
                     Pool earnings are calculated on the 1st of each month and paid to your registered bank account
-                    by the <strong style={{ color:'var(--white)', fontWeight:500 }}>15th of the following month</strong> — automatically, no request needed.
+                    by the <strong style={{ color:'var(--text-primary)', fontWeight:500 }}>15th of the following month</strong> — automatically, no request needed.
                     Sign-up commissions (R500) are credited immediately on activation approval.
                   </p>
-                  <div style={{ marginTop:12, padding:'10px 14px', background:'var(--dark)', borderRadius:'var(--r-sm)', border:'1px solid var(--border)', fontSize:12, color:'var(--gold)' }}>
+                  <div style={{ marginTop:12, padding:'10px 14px', background:'var(--surface-2)', borderRadius:'var(--r-sm)', border:'1px solid var(--border)', fontSize:12, color:'var(--gold)' }}>
                     <i className="ti ti-calendar" aria-hidden="true" style={{ marginRight:6 }} />
                     Next payout: {nextPayoutDate()}
                   </div>
@@ -490,7 +490,7 @@ export default function Dashboard() {
               {checkoutStep === 'browse' && <>
                 <div>
                   <div className="kicker" style={{ marginBottom:4 }}>Additional coffee & merchandise</div>
-                  <p style={{ fontSize:13, color:'var(--muted)', lineHeight:1.7, maxWidth:'58ch', marginBottom:20 }}>
+                  <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, maxWidth:'58ch', marginBottom:20 }}>
                     Order extra coffee or add-on products beyond your monthly subscription. These are once-off purchases and also contribute to the pool.
                   </p>
                 </div>
@@ -512,7 +512,7 @@ export default function Dashboard() {
                             {includes.slice(0,3).map((item,i) => (
                               <div key={i} style={{ display:'flex', gap:8, marginBottom:5 }}>
                                 <span style={{ color:'var(--gold)', fontSize:11, flexShrink:0 }}>✓</span>
-                                <span style={{ fontSize:12, color:'var(--muted)', lineHeight:1.5 }}>{item}</span>
+                                <span style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>{item}</span>
                               </div>
                             ))}
                           </div>
@@ -559,7 +559,7 @@ export default function Dashboard() {
                       <div key={i.id} style={{ display:'flex', justifyContent:'space-between', padding:'11px 0', borderBottom:'1px solid var(--border)', alignItems:'center' }}>
                         <div>
                           <div style={{ fontWeight:500, fontSize:13 }}>{i.name} · {i.coffee_kg<1?`${i.coffee_kg*1000}g`:`${i.coffee_kg}kg`} × {i.qty}</div>
-                          <div style={{ fontSize:11, color:'var(--dim)', marginTop:2 }}>Pool {fmtR(Number(i.pool_contribution)*i.qty)}</div>
+                          <div style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>Pool {fmtR(Number(i.pool_contribution)*i.qty)}</div>
                         </div>
                         <span style={{ fontFamily:'var(--display)', fontSize:18, color:'var(--gold)', fontWeight:600 }}>{fmtR(Number(i.price)*i.qty)}</span>
                       </div>
@@ -568,8 +568,8 @@ export default function Dashboard() {
                       <span>Total</span><span style={{ color:'var(--gold)' }}>{fmtR(cartTotal)}</span>
                     </div>
                   </div>
-                  <div className="card" style={{ marginBottom:12, fontSize:12, color:'var(--muted)', lineHeight:1.8 }}>
-                    <strong style={{ color:'var(--white)', fontWeight:500, display:'block', marginBottom:8 }}>EFT payment details</strong>
+                  <div className="card" style={{ marginBottom:12, fontSize:12, color:'var(--text-muted)', lineHeight:1.8 }}>
+                    <strong style={{ color:'var(--text-primary)', fontWeight:500, display:'block', marginBottom:8 }}>EFT payment details</strong>
                     Bank: FNB · OHMI Coffee Co. (Pty) Ltd<br />
                     Amount: <strong style={{ color:'var(--gold)' }}>{fmtR(cartTotal)}</strong><br />
                     Reference: <strong style={{ color:'var(--gold)' }}>{me?.id?.slice(0,8)?.toUpperCase()}-SHOP</strong>
@@ -588,7 +588,7 @@ export default function Dashboard() {
                     <div style={{ fontSize:32, marginBottom:12 }}>☕</div>
                     <div className="kicker" style={{ marginBottom:8 }}>Order placed</div>
                     <h2 style={{ fontFamily:'var(--display)', fontSize:24, marginBottom:12 }}>We roast on Tuesdays.</h2>
-                    <p style={{ fontSize:13, color:'var(--muted)', lineHeight:1.8, marginBottom:20 }}>
+                    <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.8, marginBottom:20 }}>
                       Reference: <strong style={{ color:'var(--gold)' }}>{me?.id?.slice(0,8)?.toUpperCase()}-SHOP</strong><br />
                       Pool contribution is live immediately.
                     </p>
@@ -615,15 +615,15 @@ export default function Dashboard() {
                       return (
                         <tr key={o.id}>
                           <td style={{ fontWeight:500 }}>{pkg?.name||'—'}</td>
-                          <td style={{ color:'var(--muted)' }}>{o.quantity}</td>
+                          <td style={{ color:'var(--text-muted)' }}>{o.quantity}</td>
                           <td style={{ color:'var(--gold)', fontWeight:500 }}>{fmtR(o.total)}</td>
-                          <td style={{ color:'var(--muted)' }}>{fmtR(o.pool_contribution)}</td>
+                          <td style={{ color:'var(--text-muted)' }}>{fmtR(o.pool_contribution)}</td>
                           <td><span className={`pill pill-${o.status==='fulfilled'?'green':o.status==='pending'?'gold':'red'}`}>{o.status}</span></td>
-                          <td style={{ color:'var(--dim)', fontSize:12 }}>{fmtD(o.created_at)}</td>
+                          <td style={{ color:'var(--text-dim)', fontSize:12 }}>{fmtD(o.created_at)}</td>
                         </tr>
                       );
                     }) : (
-                      <tr><td colSpan="6" style={{ color:'var(--dim)', textAlign:'center', padding:28 }}>
+                      <tr><td colSpan="6" style={{ color:'var(--text-dim)', textAlign:'center', padding:28 }}>
                         No orders yet —&nbsp;
                         <button style={{ background:'none', border:'none', color:'var(--gold)', cursor:'pointer', fontSize:13 }} onClick={() => switchTo('shop')}>browse the shop</button>
                       </td></tr>
@@ -647,7 +647,7 @@ export default function Dashboard() {
                   <span className="section-label">Binary tree · click + to register · click nodes to expand</span>
                   <div style={{ display:'flex', gap:6, alignItems:'center' }}>
                     <button className="btn btn-ghost btn-xs" onClick={() => setTreeScale(s => Math.max(0.4, s-0.15))}>−</button>
-                    <span style={{ fontSize:11, color:'var(--muted)', minWidth:34, textAlign:'center' }}>{Math.round(treeScale*100)}%</span>
+                    <span style={{ fontSize:11, color:'var(--text-muted)', minWidth:34, textAlign:'center' }}>{Math.round(treeScale*100)}%</span>
                     <button className="btn btn-ghost btn-xs" onClick={() => setTreeScale(s => Math.min(1.5, s+0.15))}>+</button>
                     <button className="btn btn-ghost btn-xs" onClick={() => setTreeScale(1)}>Reset</button>
                   </div>
@@ -656,10 +656,10 @@ export default function Dashboard() {
                   <div style={{ transform:`scale(${treeScale})`, transformOrigin:'top center', transition:'transform 0.2s', paddingBottom: treeScale < 1 ? `${(1-treeScale)*100}%` : 0 }}>
                     {rootNode
                       ? <TreeNode node={rootNode} map={treeMap} onOpenSlot={(parentNodeId, leg) => setRegisterSlot({ parentNodeId, leg })} />
-                      : <p style={{ color:'var(--dim)' }}>Loading…</p>}
+                      : <p style={{ color:'var(--text-dim)' }}>Loading…</p>}
                   </div>
                 </div>
-                <div style={{ padding:'10px 20px', borderTop:'1px solid var(--border)', display:'flex', gap:16, fontSize:11, color:'var(--dim)' }}>
+                <div style={{ padding:'10px 20px', borderTop:'1px solid var(--border)', display:'flex', gap:16, fontSize:11, color:'var(--text-dim)' }}>
                   <span style={{ color:'var(--green)' }}>■</span> Active &nbsp;
                   <span style={{ color:'var(--red)' }}>■</span> Inactive / Pending
                 </div>
@@ -672,14 +672,14 @@ export default function Dashboard() {
                   <tbody>
                     {members.filter(m => m.id !== me?.id).map(m => (
                       <tr key={m.id}>
-                        <td style={{ color:'var(--dim)', fontSize:11, fontWeight:600 }}>{fmtMN(m.member_number)}</td>
+                        <td style={{ color:'var(--text-dim)', fontSize:11, fontWeight:600 }}>{fmtMN(m.member_number)}</td>
                         <td style={{ fontWeight:500 }}>{m.full_name}</td>
-                        <td style={{ color:'var(--muted)', fontSize:12 }}>{m.email}</td>
+                        <td style={{ color:'var(--text-muted)', fontSize:12 }}>{m.email}</td>
                         <td><span className={`pill pill-${m.status==='active'?'green':m.status==='pending'?'gold':'red'}`}>{m.status}</span></td>
-                        <td style={{ color:'var(--dim)', fontSize:12 }}>{fmtD(m.created_at)}</td>
+                        <td style={{ color:'var(--text-dim)', fontSize:12 }}>{fmtD(m.created_at)}</td>
                       </tr>
                     ))}
-                    {members.length <= 1 && <tr><td colSpan="5" style={{ color:'var(--dim)', textAlign:'center', padding:24 }}>No network members yet.</td></tr>}
+                    {members.length <= 1 && <tr><td colSpan="5" style={{ color:'var(--text-dim)', textAlign:'center', padding:24 }}>No network members yet.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -693,8 +693,8 @@ export default function Dashboard() {
                 ))}
               </div>
               <div className="card" style={{ marginBottom:0 }}>
-                <div style={{ fontSize:12, color:'var(--muted)', lineHeight:1.8, padding:'4px 0' }}>
-                  <strong style={{ color:'var(--white)', fontWeight:500 }}>Automatic monthly payout.</strong> No request needed.
+                <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.8, padding:'4px 0' }}>
+                  <strong style={{ color:'var(--text-primary)', fontWeight:500 }}>Automatic monthly payout.</strong> No request needed.
                   Your balance is paid to your registered bank account by the <strong style={{ color:'var(--gold)', fontWeight:500 }}>15th of the following month</strong> every month.
                   Pool earnings only credit when you hold rank. Sign-up commissions (R500) credit immediately on activation approval.
                 </div>
@@ -706,15 +706,15 @@ export default function Dashboard() {
                   <tbody>
                     {myLedger.filter(l => l.entry_type !== 'foundation').length ? myLedger.filter(l => l.entry_type !== 'foundation').map(l => (
                       <tr key={l.id}>
-                        <td style={{ color:'var(--dim)', fontSize:12 }}>{fmtD(l.created_at)}</td>
+                        <td style={{ color:'var(--text-dim)', fontSize:12 }}>{fmtD(l.created_at)}</td>
                         <td><span className={`pill pill-${l.entry_type==='payout'?'red':l.entry_type==='pool_share'?'gold':l.entry_type==='signup_commission'?'green':'grey'}`}>
                           {l.entry_type==='signup_commission'?'sign-up commission':l.entry_type.replace('_',' ')}
                         </span></td>
-                        <td style={{ color:'var(--muted)', fontSize:12 }}>{l.note}</td>
+                        <td style={{ color:'var(--text-muted)', fontSize:12 }}>{l.note}</td>
                         <td style={{ textAlign:'right', fontFamily:'var(--display)', fontSize:18, fontWeight:600, color:l.entry_type==='payout'?'var(--red)':'var(--gold)' }}>{fmtR(l.amount)}</td>
                       </tr>
                     )) : (
-                      <tr><td colSpan="4" style={{ color:'var(--dim)', textAlign:'center', padding:24 }}>
+                      <tr><td colSpan="4" style={{ color:'var(--text-dim)', textAlign:'center', padding:24 }}>
                         Earnings appear here after billing runs and sign-up commissions.
                       </td></tr>
                     )}
@@ -747,11 +747,11 @@ export default function Dashboard() {
                     ['ti-plane', 'Use through Vollard Black', 'Redeem points for travel, accommodation, experiences, and lifestyle purchases through the Vollard Black catalogue.'],
                     ['ti-calendar', 'Points never expire', 'As long as your membership is active, your lifestyle points accumulate indefinitely.'],
                   ].map(([icon, title, desc]) => (
-                    <div key={title} style={{ display:'flex', gap:14, padding:'12px 14px', background:'var(--dark)', borderRadius:'var(--r-md)', border:'1px solid var(--border)' }}>
+                    <div key={title} style={{ display:'flex', gap:14, padding:'12px 14px', background:'var(--surface-2)', borderRadius:'var(--r-md)', border:'1px solid var(--border)' }}>
                       <i className={`ti ${icon}`} aria-hidden="true" style={{ fontSize:18, color:'var(--blue)', flexShrink:0, marginTop:2 }} />
                       <div>
                         <div style={{ fontWeight:500, fontSize:13, marginBottom:4 }}>{title}</div>
-                        <div style={{ fontSize:12, color:'var(--muted)', lineHeight:1.7 }}>{desc}</div>
+                        <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.7 }}>{desc}</div>
                       </div>
                     </div>
                   ))}
@@ -764,13 +764,13 @@ export default function Dashboard() {
                   <div style={{ fontFamily:'var(--display)', fontSize:28, color:'var(--blue)', fontWeight:600, marginBottom:4 }}>
                     {fmtR(currentRank.bonus)} pts / month
                   </div>
-                  <div style={{ fontSize:12, color:'var(--muted)' }}>At {currentRank.name} rank · held every month = cumulative</div>
+                  <div style={{ fontSize:12, color:'var(--text-muted)' }}>At {currentRank.name} rank · held every month = cumulative</div>
                 </div>
               )}
               {!currentRank?.bonus && (
                 <div className="card" style={{ borderLeft:'3px solid var(--border)', padding:'16px 20px' }}>
                   <div style={{ fontFamily:'var(--display)', fontSize:18, marginBottom:8 }}>Lifestyle points unlock at Gold rank.</div>
-                  <p style={{ fontSize:13, color:'var(--muted)', lineHeight:1.8 }}>
+                  <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.8 }}>
                     Gold requires 20 active members on each leg. At Gold you earn R4,000 pts/month — cumulative as long as you hold rank.
                     Keep building your network.
                   </p>
@@ -786,10 +786,10 @@ export default function Dashboard() {
                     <tbody>
                       {myLifestyle.map(l => (
                         <tr key={l.id}>
-                          <td style={{ color:'var(--dim)', fontSize:12 }}>{fmtD(l.created_at)}</td>
+                          <td style={{ color:'var(--text-dim)', fontSize:12 }}>{fmtD(l.created_at)}</td>
                           <td><span className={`pill pill-${l.entry_type==='rank_bonus'?'blue':l.entry_type==='redemption'?'red':'grey'}`}>{l.entry_type.replace('_',' ')}</span></td>
-                          <td style={{ color:'var(--muted)', fontSize:12 }}>{l.rank_name||'—'}</td>
-                          <td style={{ color:'var(--muted)', fontSize:12 }}>{l.note}</td>
+                          <td style={{ color:'var(--text-muted)', fontSize:12 }}>{l.rank_name||'—'}</td>
+                          <td style={{ color:'var(--text-muted)', fontSize:12 }}>{l.note}</td>
                           <td style={{ textAlign:'right', fontFamily:'var(--display)', fontSize:18, fontWeight:600, color:l.entry_type==='redemption'?'var(--red)':'var(--blue)' }}>
                             {['redemption','expiry'].includes(l.entry_type)?'-':''}{Number(l.points).toLocaleString()}
                           </td>
@@ -805,9 +805,9 @@ export default function Dashboard() {
             {tab === 'ranks' && <>
               <div className="card card-gold" style={{ padding:'16px 20px' }}>
                 <div style={{ fontFamily:'var(--display)', fontSize:18, color:'var(--gold)', marginBottom:6 }}>Rank is set by your weaker leg.</div>
-                <p style={{ fontSize:13, color:'var(--muted)', lineHeight:1.7 }}>
+                <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7 }}>
                   9L / 10R = Silver, not Gold. Both legs must independently hit the threshold.
-                  Your qualifying leg is <strong style={{ color:'var(--white)', fontWeight:500 }}>{qualLeg}</strong>.
+                  Your qualifying leg is <strong style={{ color:'var(--text-primary)', fontWeight:500 }}>{qualLeg}</strong>.
                 </p>
               </div>
               <div className="card card-flush">
@@ -820,7 +820,7 @@ export default function Dashboard() {
                       return (
                         <tr key={r.name} style={{ background: isCurrent?'rgba(201,168,76,0.05)':undefined }}>
                           <td style={{ fontWeight:500, color: isCurrent?'var(--gold)':achieved?'var(--white)':'var(--dim)' }}>{r.name}</td>
-                          <td style={{ color:'var(--muted)' }}>{r.left.toLocaleString()}</td>
+                          <td style={{ color:'var(--text-muted)' }}>{r.left.toLocaleString()}</td>
                           <td style={{ color:leftCount>=r.left?'var(--green)':'var(--dim)', fontWeight:leftCount>=r.left?500:400 }}>{leftCount}{leftCount>=r.left?' ✓':''}</td>
                           <td style={{ color:rightCount>=r.right?'var(--green)':'var(--dim)', fontWeight:rightCount>=r.right?500:400 }}>{rightCount}{rightCount>=r.right?' ✓':''}</td>
                           <td style={{ color:isCurrent||achieved?'var(--gold)':'var(--dim)', fontWeight:500 }}>R{r.pool.toLocaleString()}</td>
