@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import BinaryTree from '@/app/components/BinaryTree';
 
 const RANKS = [
   { name:'Bronze',          left:2,    right:2,    pool:750,     bonus:0 },
@@ -47,34 +48,7 @@ const MN = n => n ? String(n).padStart(5,'0') : '—';
 const nextPayout = () => new Date(new Date().getFullYear(),new Date().getMonth()+1,15)
   .toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'});
 
-function TreeNode({node, map, onOpen, depth=0}) {
-  const [open,setOpen] = useState(depth<2);
-  const kids = map[node.id]||[];
-  const L = kids.find(k=>k.leg==='L'), R = kids.find(k=>k.leg==='R');
-  const active = node.status==='active';
-  return (
-    <div className="tree-node">
-      <div className="tree-card" onClick={()=>(L||R)&&setOpen(o=>!o)}
-        style={{borderColor:active?'var(--green)':'var(--red)',cursor:(L||R)?'pointer':'default'}}>
-        <div className="tree-name">{node.name}</div>
-        <div className="tree-num">#{MN(node.mn)}</div>
-        <div className="tree-status" style={{color:active?'var(--green)':'var(--red)'}}>{node.status}</div>
-        <div className="tree-counts">L:{node.lc} · R:{node.rc}</div>
-      </div>
-      {(L||R)&&open&&(
-        <div className="tree-legs">
-          {['L','R'].map((leg,i)=>{const child=i===0?L:R;return(
-            <div key={leg} className="tree-leg">
-              <div className="tree-leg-label">{leg}</div>
-              {child?<TreeNode node={child} map={map} onOpen={onOpen} depth={depth+1}/>
-                :<button className="tree-open" onClick={()=>onOpen&&onOpen(node.id,leg)}>+ Add</button>}
-            </div>
-          );})}
-        </div>
-      )}
-    </div>
-  );
-}
+
 
 function RegisterModal({parentNodeId, leg, onClose, onSuccess}) {
   const [form,setForm] = useState({name:'',email:'',phone:''});
@@ -130,7 +104,6 @@ export default function Dashboard() {
   const [busy,setBusy] = useState('');
   const [toast,setToast] = useState('');
   const [registerSlot,setRegisterSlot] = useState(null);
-  const [treeScale,setTreeScale] = useState(1);
 
   const flash = m=>{setToast(m);setTimeout(()=>setToast(''),3000);};
 
@@ -152,22 +125,13 @@ export default function Dashboard() {
   }
   useEffect(()=>{load();},[]);
 
-  const treeMap = useMemo(()=>{
-    const map={};
-    nodes.forEach(n=>{
-      if(n.parent_id){
-        const m=members.find(x=>x.id===n.member_id);
-        (map[n.parent_id]=map[n.parent_id]||[]).push({...n,name:m?.full_name?.split(' ')[0]||'?',mn:m?.member_number,status:m?.status||'pending',lc:n.left_count,rc:n.right_count});
-      }
-    });return map;
-  },[nodes,members]);
+
 
   const myNode=nodes.find(n=>me&&n.member_id===me.id);
   const L=myNode?.left_count||0,RC=myNode?.right_count||0;
   const qual=Math.min(L,RC);
   const currentRank=RANKS.filter(r=>r.left<=qual).pop();
   const nextRank=RANKS.find(r=>r.left>qual);
-  const rootNode=myNode?{...myNode,name:me?.full_name?.split(' ')[0]||'You',mn:me?.member_number,status:me?.status,lc:L,rc:RC}:null;
 
   const myLedger=ledger.filter(l=>me&&l.member_id===me.id);
   const earned=myLedger.filter(l=>['pool_share','signup_commission'].includes(l.entry_type)).reduce((s,l)=>s+Number(l.amount),0);
@@ -541,7 +505,7 @@ export default function Dashboard() {
             {/* ── NETWORK ── */}
             {tab==='network'&&<>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12}}>
-                {[{icon:'ti-trending-up',cls:'stat-icon-primary',val:L,label:'Left leg'},{icon:'ti-trending-up',cls:'stat-icon-teal',val:RC,label:'Right leg'},{icon:'ti-users',cls:'stat-icon-green',val:members.length-1,label:'Total downline'},{icon:'ti-binary-tree-2',cls:'stat-icon-purple',val:Math.max(0,...nodes.map(n=>n.depth||0)),label:'Max depth'}].map(s=>(
+                {[{icon:'ti-trending-up',cls:'stat-icon-primary',val:L,label:'Left leg'},{icon:'ti-trending-up',cls:'stat-icon-teal',val:RC,label:'Right leg'},{icon:'ti-users',cls:'stat-icon-green',val:members.length-1,label:'Downline'},{icon:'ti-binary-tree-2',cls:'stat-icon-purple',val:Math.max(0,...nodes.map(n=>n.depth||0)),label:'Max depth'}].map(s=>(
                   <div key={s.label} className="stat-card">
                     <div className={`stat-icon ${s.cls}`}><i className={`ti ${s.icon}`} aria-hidden="true"/></div>
                     <div><div className="stat-val">{s.val}</div><div className="stat-label">{s.label}</div></div>
@@ -550,27 +514,20 @@ export default function Dashboard() {
               </div>
               <div className="card card-flush">
                 <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface-1)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                  <span className="section-label">Binary tree</span>
-                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                    <button className="btn btn-ghost btn-xs" onClick={()=>setTreeScale(s=>Math.max(0.4,s-0.15))}>−</button>
-                    <span style={{fontSize:11,color:'var(--text-muted)',minWidth:32,textAlign:'center'}}>{Math.round(treeScale*100)}%</span>
-                    <button className="btn btn-ghost btn-xs" onClick={()=>setTreeScale(s=>Math.min(1.6,s+0.15))}>+</button>
-                    <button className="btn btn-ghost btn-xs" onClick={()=>setTreeScale(1)}>Reset</button>
-                  </div>
+                  <span className="section-label">My network tree</span>
+                  <span style={{fontSize:11,color:'var(--text-muted)'}}>Pinch or scroll to zoom · drag to pan · tap + to register</span>
                 </div>
-                <div style={{overflow:'auto',padding:24}}>
-                  <div style={{transform:`scale(${treeScale})`,transformOrigin:'top center',transition:'transform 0.2s'}}>
-                    {rootNode?<TreeNode node={rootNode} map={treeMap} onOpen={(pid,leg)=>setRegisterSlot({parentNodeId:pid,leg})}/>:<p style={{color:'var(--text-muted)'}}>Loading…</p>}
-                  </div>
-                </div>
-                <div style={{padding:'10px 20px',borderTop:'1px solid var(--border)',display:'flex',gap:16,fontSize:11,background:'var(--surface-1)'}}>
-                  <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:8,height:8,borderRadius:'50%',background:'var(--green)',display:'inline-block'}}/><span style={{color:'var(--text-muted)'}}>Active</span></span>
-                  <span style={{display:'flex',alignItems:'center',gap:5}}><span style={{width:8,height:8,borderRadius:'50%',background:'var(--red)',display:'inline-block'}}/><span style={{color:'var(--text-muted)'}}>Inactive</span></span>
-                  <span style={{marginLeft:'auto',color:'var(--primary)',fontWeight:600,fontSize:11}}>Click open slots to register →</span>
-                </div>
+                <BinaryTree
+                  nodes={nodes}
+                  members={members}
+                  rootMemberId={me?.id}
+                  onRegister={(parentNodeId,leg)=>setRegisterSlot({parentNodeId,leg})}
+                  isAdmin={false}
+                  height={460}
+                />
               </div>
               <div className="card card-flush">
-                <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface-1)'}}><span className="section-label">Members</span></div>
+                <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface-1)'}}><span className="section-label">Your downline</span></div>
                 <table className="data-table">
                   <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Status</th><th>Joined</th></tr></thead>
                   <tbody>
