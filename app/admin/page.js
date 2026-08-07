@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import BinaryTree from '@/app/components/BinaryTree';
 
 const TABS = [
   { id: 'dashboard', icon: 'ti-layout-dashboard', tip: 'Dashboard' },
@@ -14,38 +15,11 @@ const TABS = [
   { id: 'foundation',icon: 'ti-heart',            tip: 'Foundation' },
 ];
 
+const MN = n => n ? String(n).padStart(5,'0') : '—';
 const fmtR = n => 'R\u202f' + Number(n||0).toLocaleString('en-ZA', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 const fmtD = d => d ? new Date(d).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 
-function TreeNode({ node, map }) {
-  const [open, setOpen] = useState(node.depth < 2);
-  const kids = map[node.id] || [];
-  const L = kids.find(k => k.leg === 'L');
-  const R = kids.find(k => k.leg === 'R');
-  const hasKids = L || R;
-  return (
-    <div className="tree-node">
-      <div className={`tree-card ${node.status === 'active' ? 'active' : ''}`} onClick={() => hasKids && setOpen(o=>!o)}>
-        <div className="tree-name">{node.name}</div>
-        <div className="tree-status">{node.status}</div>
-        <div className="tree-counts">L:{node.lc} · R:{node.rc}</div>
-      </div>
-      {hasKids && open && (
-        <div className="tree-legs">
-          {['L','R'].map((leg,i) => {
-            const child = i===0?L:R;
-            return (
-              <div key={leg} className="tree-leg">
-                <div className="tree-leg-label">{leg}</div>
-                {child ? <TreeNode node={child} map={map} /> : <div className="tree-open">Open</div>}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
+
 
 // ── Profit Calculator ────────────────────────────────────────────────────────
 function ProfitCalc() {
@@ -224,6 +198,7 @@ export default function Admin() {
   const [packages, setPackages] = useState([]);
   const [pkgOrders, setPkgOrders] = useState([]);
   const [toast, setToast] = useState('');
+  const [travelBookings, setTravelBookings] = useState([]);
   const [busy, setBusy] = useState('');
   const [billingResult, setBillingResult] = useState(null);
   const [memberFilter, setMemberFilter] = useState('');
@@ -231,7 +206,7 @@ export default function Admin() {
   const flash = m => { setToast(m); setTimeout(() => setToast(''), 3000); };
 
   const load = useCallback(async () => {
-    const [m, n, o, s, a, l, f, b, p, po] = await Promise.all([
+    const [m, n, o, s, a, l, f, b, p, po, tb] = await Promise.all([
       supabase.from('members').select('*').order('created_at', { ascending: false }),
       supabase.from('tree_view').select('*'),
       supabase.from('retail_orders').select('*').order('created_at', { ascending: false }),
@@ -242,6 +217,7 @@ export default function Admin() {
       supabase.from('member_balances').select('*'),
       supabase.from('packages').select('*').order('sort_order'),
       supabase.from('package_orders').select('*').order('created_at', { ascending: false }),
+      supabase.from('travel_bookings').select('*').order('created_at', { ascending: false }),
     ]);
     setMembers(m.data||[]);
     setNodes(n.data||[]);
@@ -253,6 +229,7 @@ export default function Admin() {
     setBalances(b.data||[]);
     setPackages(p.data||[]);
     setPkgOrders(po.data||[]);
+    setTravelBookings(tb.data||[]);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -729,6 +706,87 @@ export default function Admin() {
                       </tr>
                     ))}
                     {foundation.length===0&&<tr><td colSpan="5" style={{ color:'var(--text-dim)',textAlign:'center',padding:24 }}>Run billing to allocate foundation funds.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </>}
+
+            {/* ── TRAVEL BOOKINGS ── */}
+            {tab==='travel'&&<>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
+                {[
+                  ['Total bookings',travelBookings.length,''],
+                  ['Confirmed',travelBookings.filter(b=>b.status==='confirmed').length,'green'],
+                  ['Pending',travelBookings.filter(b=>b.status==='pending').length,'primary'],
+                  ['Revenue',`R ${travelBookings.reduce((s,b)=>s+Number(b.total_cost),0).toLocaleString('en-ZA',{maximumFractionDigits:0})}`, 'teal'],
+                  ['Points used',travelBookings.reduce((s,b)=>s+Number(b.points_used),0).toLocaleString(),''],
+                  ['Cash due',`R ${travelBookings.reduce((s,b)=>s+Number(b.cash_due),0).toLocaleString('en-ZA',{maximumFractionDigits:0})}`,'amber'],
+                ].map(([l,v,c])=>(
+                  <div key={l} className="metric"><div className={`metric-val ${c}`}>{v}</div><div className="metric-label">{l}</div></div>
+                ))}
+              </div>
+              <div className="card card-flush">
+                <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface-1)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                  <span className="section-label">All travel bookings · {travelBookings.length} total</span>
+                  <div style={{display:'flex',gap:6}}>
+                    {['all','pending','confirmed','cancelled'].map(s=>(
+                      <span key={s} style={{fontSize:10,fontWeight:700,padding:'3px 10px',borderRadius:'var(--r-full)',background:s==='all'?'var(--primary)':'var(--surface-2)',color:s==='all'?'#fff':'var(--text-muted)',cursor:'pointer',textTransform:'uppercase',letterSpacing:'0.06em'}}>{s}</span>
+                    ))}
+                  </div>
+                </div>
+                <table className="data-table">
+                  <thead><tr><th>Ref</th><th>Member</th><th>Booking</th><th>Dates</th><th>Total</th><th>Points</th><th>Cash due</th><th>Status</th><th>Action</th></tr></thead>
+                  <tbody>
+                    {travelBookings.length?travelBookings.map(b=>{
+                      const m=members.find(x=>x.id===b.member_id);
+                      return(
+                        <tr key={b.id}>
+                          <td style={{fontWeight:700,color:'var(--primary)',fontSize:11,fontFamily:'monospace'}}>{b.booking_ref}</td>
+                          <td>
+                            <div style={{fontWeight:600,fontSize:13}}>{m?.full_name||'?'}</div>
+                            <div style={{fontSize:10,color:'var(--text-muted)'}}>#{MN(m?.member_number)}</div>
+                          </td>
+                          <td>
+                            <div style={{fontWeight:500,fontSize:12,maxWidth:180}}>{b.hotel_name}</div>
+                            <div style={{fontSize:10,color:'var(--text-muted)'}}>{b.hotel_location} · {b.room_name}</div>
+                          </td>
+                          <td style={{fontSize:12,color:'var(--text-muted)',whiteSpace:'nowrap'}}>
+                            {b.check_in} → {b.check_out}
+                            <div style={{fontSize:10,color:'var(--text-dim)'}}>{b.nights} {b.nights===1?'night':'nights'} · {b.guests} guests</div>
+                          </td>
+                          <td style={{fontWeight:700,fontSize:13}}>R {Number(b.total_cost).toLocaleString('en-ZA',{maximumFractionDigits:0})}</td>
+                          <td style={{color:'var(--purple)',fontWeight:600}}>{Number(b.points_used)>0?`${Number(b.points_used).toLocaleString()} pts`:'—'}</td>
+                          <td style={{fontWeight:700,color:Number(b.cash_due)>0?'var(--amber)':'var(--green-text)'}}>
+                            {Number(b.cash_due)>0?`R ${Number(b.cash_due).toLocaleString('en-ZA',{maximumFractionDigits:0})}`:'Covered'}
+                          </td>
+                          <td><span className={`pill pill-${b.status==='confirmed'?'green':b.status==='pending'?'amber':b.status==='completed'?'primary':'red'}`}>{b.status}</span></td>
+                          <td>
+                            <div style={{display:'flex',gap:6}}>
+                              {b.status==='pending'&&(
+                                <>
+                                  <button className="btn btn-xs" style={{background:'var(--green-bg)',color:'var(--green-text)',border:'1px solid rgba(16,185,129,0.2)'}}
+                                    onClick={async()=>{await supabase.from('travel_bookings').update({status:'confirmed'}).eq('id',b.id);flash('✓ Booking confirmed');const {data}=await supabase.from('travel_bookings').select('*').order('created_at',{ascending:false});setTravelBookings(data||[]);}}>
+                                    Confirm
+                                  </button>
+                                  <button className="btn btn-xs" style={{background:'var(--red-bg)',color:'var(--red-text)',border:'1px solid rgba(239,68,68,0.2)'}}
+                                    onClick={async()=>{await supabase.from('travel_bookings').update({status:'cancelled'}).eq('id',b.id);flash('Booking cancelled');const {data}=await supabase.from('travel_bookings').select('*').order('created_at',{ascending:false});setTravelBookings(data||[]);}}>
+                                    Cancel
+                                  </button>
+                                </>
+                              )}
+                              {b.status==='confirmed'&&(
+                                <button className="btn btn-xs" style={{background:'var(--primary-bg)',color:'var(--primary)',border:'1px solid var(--primary-border)'}}
+                                  onClick={async()=>{await supabase.from('travel_bookings').update({status:'completed'}).eq('id',b.id);flash('Marked as completed');const {data}=await supabase.from('travel_bookings').select('*').order('created_at',{ascending:false});setTravelBookings(data||[]);}}>
+                                  Complete
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    }):(
+                      <tr><td colSpan="9" style={{textAlign:'center',padding:32,color:'var(--text-muted)'}}>No travel bookings yet.</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>
