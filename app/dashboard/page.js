@@ -314,7 +314,7 @@ export default function Dashboard() {
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10}}>
                     {[['Left leg',L,nextRank.left],['Right leg',Rcount,nextRank.right]].map(([label,cur,need])=>(
-                      <div key={label} style={{padding:'14px 16px',background:'var(--off-white)',borderRadius:'var(--r-sm)',border:'1px solid var(--border)'}}>
+                      <div key={label} style={{padding:'14px 16px',background:'var(--surface-1)',borderRadius:'var(--r-sm)',border:'1px solid var(--border)'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:10}}>
                           <span style={{fontSize:11,color:'var(--text-muted)',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase'}}>{label}</span>
                           <span style={{fontFamily:'var(--display)',fontSize:20,fontWeight:600,color:cur>=need?'var(--green)':'var(--maroon)'}}>
@@ -342,7 +342,7 @@ export default function Dashboard() {
               {/* Referral */}
               <div className="card">
                 <div className="section-header"><span className="section-label">Your referral link</span></div>
-                <div style={{background:'var(--off-white)',border:'1px solid var(--border)',borderRadius:'var(--r-xs)',padding:'10px 14px',fontSize:12,color:'var(--text-sub)',wordBreak:'break-all',marginBottom:12}}>
+                <div style={{background:'var(--surface-1)',border:'1px solid var(--border)',borderRadius:'var(--r-xs)',padding:'10px 14px',fontSize:12,color:'var(--text-sub)',wordBreak:'break-all',marginBottom:12}}>
                   {refLink||'Loading…'}
                 </div>
                 <div style={{display:'flex',gap:8,marginBottom:14}}>
@@ -368,13 +368,13 @@ export default function Dashboard() {
                   <div className="dt-card-body">
                     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:10,marginBottom:16}}>
                       {[['Pool contribution',R(sub?.pool_contribution||500)],['OHMI retention',R((sub?.amount||1500)-(sub?.pool_contribution||500))],['Status',sub?.status||'inactive']].map(([l,v])=>(
-                        <div key={l} style={{padding:'12px 14px',background:'var(--off-white)',borderRadius:'var(--r-sm)',border:'1px solid var(--border)'}}>
+                        <div key={l} style={{padding:'12px 14px',background:'var(--surface-1)',borderRadius:'var(--r-sm)',border:'1px solid var(--border)'}}>
                           <div style={{fontSize:10,color:'var(--text-muted)',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:5}}>{l}</div>
                           <div style={{fontFamily:'var(--display)',fontSize:18,fontWeight:600,color:'var(--maroon)'}}>{v}</div>
                         </div>
                       ))}
                     </div>
-                    <div style={{padding:'12px 14px',background:'var(--off-white)',borderRadius:'var(--r-sm)',border:'1px solid var(--border)',fontSize:12,color:'var(--text-sub)',lineHeight:1.8}}>
+                    <div style={{padding:'12px 14px',background:'var(--surface-1)',borderRadius:'var(--r-sm)',border:'1px solid var(--border)',fontSize:12,color:'var(--text-sub)',lineHeight:1.8}}>
                       <strong style={{color:'var(--text-h)',display:'block',marginBottom:6}}>How your R1,500 splits</strong>
                       R500 → binary commission pool (30% distributed to ranked reps)<br/>
                       R1,000 → coffee product, roasting, packaging, OHMI operations
@@ -454,7 +454,7 @@ export default function Dashboard() {
                     <div className="cart-divider"/>
                     <div className="cart-stat"><span className="cart-stat-label">Items</span><span className="cart-stat-val">{cartQty}</span></div>
                     <div style={{marginLeft:'auto',display:'flex',gap:8}}>
-                      <button className="btn btn-ghost btn-sm" style={{color:'var(--cream)',borderColor:'rgba(255,255,255,0.2)'}} onClick={()=>setCart({})}>Clear</button>
+                      <button className="btn btn-ghost btn-sm" style={{color:'var(--white)',borderColor:'rgba(255,255,255,0.2)'}} onClick={()=>setCart({})}>Clear</button>
                       <button className="btn btn-gold" onClick={()=>setCheckoutStep('cart')}>Review →</button>
                     </div>
                   </div>
@@ -514,7 +514,7 @@ export default function Dashboard() {
             {/* ── MY ORDERS ── */}
             {tab==='orders'&&(
               <div className="card card-flush">
-                <div style={{padding:'16px 20px',borderBottom:'1px solid var(--border)',background:'var(--off-white)'}}><span className="section-label">Order history</span></div>
+                <div style={{padding:'16px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface-1)'}}><span className="section-label">Order history</span></div>
                 <table className="data-table">
                   <thead><tr><th>Package</th><th>Qty</th><th>Total</th><th>Pool</th><th>Status</th><th>Date</th></tr></thead>
                   <tbody>
@@ -544,7 +544,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="card card-flush">
-                <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--off-white)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+                <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface-1)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                   <span className="section-label">Binary tree</span>
                   <div style={{display:'flex',gap:6,alignItems:'center'}}>
                     <button className="btn btn-ghost btn-xs" onClick={()=>setTreeScale(s=>Math.max(0.4,s-0.15))}>−</button>
@@ -553,19 +553,19 @@ export default function Dashboard() {
                     <button className="btn btn-ghost btn-xs" onClick={()=>setTreeScale(1)}>Reset</button>
                   </div>
                 </div>
-                <div style={{overflow:'auto',padding:24,background:'var(--off-white)'}}>
+                <div style={{overflow:'auto',padding:24,background:'var(--surface-1)'}}>
                   <div style={{transform:`scale(${treeScale})`,transformOrigin:'top center',transition:'transform 0.2s',paddingBottom:treeScale<1?`${(1-treeScale)*120}%`:0}}>
                     {rootNode?<TreeNode node={rootNode} map={treeMap} onOpen={(pid,leg)=>setRegisterSlot({parentNodeId:pid,leg})}/>:<p style={{color:'var(--text-dim)'}}>Loading…</p>}
                   </div>
                 </div>
-                <div style={{padding:'10px 20px',borderTop:'1px solid var(--border)',display:'flex',gap:16,fontSize:11,color:'var(--text-muted)',background:'var(--off-white)'}}>
+                <div style={{padding:'10px 20px',borderTop:'1px solid var(--border)',display:'flex',gap:16,fontSize:11,color:'var(--text-muted)',background:'var(--surface-1)'}}>
                   <span><span style={{color:'var(--green)',marginRight:4}}>■</span>Active</span>
                   <span><span style={{color:'var(--red-text)',marginRight:4}}>■</span>Inactive</span>
                   <span style={{color:'var(--gold-dk)',marginLeft:'auto'}}>Click open slots to register</span>
                 </div>
               </div>
               <div className="card card-flush">
-                <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--off-white)'}}><span className="section-label">Members</span></div>
+                <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface-1)'}}><span className="section-label">Members</span></div>
                 <table className="data-table">
                   <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Status</th><th>Joined</th></tr></thead>
                   <tbody>
@@ -599,7 +599,7 @@ export default function Dashboard() {
                 Pool earnings only credit when you hold rank. Sign-up commissions (R500) credit on activation approval.
               </div>
               <div className="card card-flush">
-                <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--off-white)'}}><span className="section-label">Commission ledger</span></div>
+                <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface-1)'}}><span className="section-label">Commission ledger</span></div>
                 <table className="data-table">
                   <thead><tr><th>Date</th><th>Type</th><th>Note</th><th style={{textAlign:'right'}}>Amount</th></tr></thead>
                   <tbody>
@@ -652,7 +652,7 @@ export default function Dashboard() {
               )}
               {myLife.length>0&&(
                 <div className="card card-flush">
-                  <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--off-white)'}}><span className="section-label">Point history</span></div>
+                  <div style={{padding:'14px 20px',borderBottom:'1px solid var(--border)',background:'var(--surface-1)'}}><span className="section-label">Point history</span></div>
                   <table className="data-table">
                     <thead><tr><th>Date</th><th>Type</th><th>Rank</th><th style={{textAlign:'right'}}>Points</th></tr></thead>
                     <tbody>
