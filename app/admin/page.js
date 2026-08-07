@@ -514,7 +514,7 @@ export default function Admin() {
                         <tr key={n.node_id||n.id}>
                           <td style={{ fontWeight:500 }}>{m?.full_name||'?'}</td>
                           <td><span className={`pill pill-${m?.status==='active'?'green':'grey'}`}>{m?.status||'?'}</span></td>
-                          <td style={{ color:n.leg==='L'?'var(--blue)':n.leg==='R'?'var(--gold)':'var(--muted)', fontWeight:500 }}>{n.leg||'Root'}</td>
+                          <td style={{ color:n.leg==='L'?'var(--blue)':n.leg==='R'?'var(--gold)':'var(--text-muted)', fontWeight:500 }}>{n.leg||'Root'}</td>
                           <td style={{ color:'var(--text-dim)' }}>{n.depth}</td>
                           <td style={{ color:'var(--gold)',fontWeight:500 }}>{n.left_count}</td>
                           <td style={{ color:'var(--gold)',fontWeight:500 }}>{n.right_count}</td>
