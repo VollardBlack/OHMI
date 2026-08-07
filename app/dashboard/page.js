@@ -209,6 +209,11 @@ export default function Dashboard() {
         <span className="mobile-topbar-logo">OHMI.</span>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           <span className="topbar-badge topbar-badge-gold" style={{fontSize:9}}>{currentRank?.name||'Unranked'}</span>
+          <Link href="/admin">
+            <button style={{background:'rgba(255,255,255,0.12)',border:'none',borderRadius:'var(--r-xs)',width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',color:'rgba(255,255,255,0.8)',fontSize:16,cursor:'pointer'}} aria-label="Admin">
+              <i className="ti ti-settings" aria-hidden="true"/>
+            </button>
+          </Link>
           <div className="rail-avatar" style={{width:30,height:30,fontSize:12}}>{me?.full_name?.[0]||'?'}</div>
         </div>
       </div>
@@ -230,8 +235,9 @@ export default function Dashboard() {
           </nav>
           <div className="rail-divider"/>
           <div className="rail-bottom">
-            <Link href="/admin"><button className="rail-item" data-tip="Admin" aria-label="Admin"><i className="ti ti-settings" aria-hidden="true"/></button></Link>
-            <div className="rail-avatar">{me?.full_name?.[0]||'?'}</div>
+            <Link href="/travel"><button className="rail-item" data-tip="Travel" aria-label="Travel"><i className="ti ti-plane" aria-hidden="true"/></button></Link>
+            <Link href="/admin"><button className="rail-item" data-tip="Admin panel" aria-label="Admin"><i className="ti ti-settings" aria-hidden="true"/></button></Link>
+            <div className="rail-avatar" title={me?.full_name}>{me?.full_name?.[0]||'?'}</div>
           </div>
         </aside>
 
@@ -312,7 +318,7 @@ export default function Dashboard() {
                       {currentRank?.name||'Unranked'} → <strong style={{color:'var(--maroon)'}}>{nextRank.name}</strong>
                     </span>
                   </div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:10}}>
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:10}}>
                     {[['Left leg',L,nextRank.left],['Right leg',Rcount,nextRank.right]].map(([label,cur,need])=>(
                       <div key={label} style={{padding:'14px 16px',background:'var(--surface-1)',borderRadius:'var(--r-sm)',border:'1px solid var(--border)'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:10}}>
@@ -366,7 +372,7 @@ export default function Dashboard() {
                     <div className="dt-card-header-sub">1kg Uganda Bugisu AA · Builder Pack</div>
                   </div>
                   <div className="dt-card-body">
-                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))',gap:10,marginBottom:16}}>
+                    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(110px,1fr))',gap:8,marginBottom:14}}>
                       {[['Pool contribution',R(sub?.pool_contribution||500)],['OHMI retention',R((sub?.amount||1500)-(sub?.pool_contribution||500))],['Status',sub?.status||'inactive']].map(([l,v])=>(
                         <div key={l} style={{padding:'12px 14px',background:'var(--surface-1)',borderRadius:'var(--r-sm)',border:'1px solid var(--border)'}}>
                           <div style={{fontSize:10,color:'var(--text-muted)',fontWeight:600,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:5}}>{l}</div>
@@ -710,18 +716,29 @@ export default function Dashboard() {
       {/* Mobile bottom nav */}
       <nav className="mobile-nav">
         <div className="mobile-nav-inner">
-          {[{id:'home',icon:'ti-layout-dashboard',label:'Home'},{id:'network',icon:'ti-binary-tree-2',label:'Network'},{id:'shop',icon:'ti-shopping-bag',label:'Shop'},{id:'earnings',icon:'ti-coin',label:'Earnings'},{id:'lifestyle',icon:'ti-sparkles',label:'Lifestyle'}].map(t=>(
-            <button key={t.id} className={`mobile-nav-item${tab===t.id?' on':''}`} onClick={()=>go(t.id)} aria-label={t.label}>
-              <i className={`ti ${t.icon}`} aria-hidden="true"/>
-              <span>{t.label}</span>
-              {t.id==='shop'&&cartQty>0&&<span className="m-badge">{cartQty}</span>}
-            </button>
-          ))}
-          <Link href="/travel"><button className="mobile-nav-item" aria-label="Travel"><i className="ti ti-plane" aria-hidden="true"/><span>Travel</span></button></Link>
-          <button className="mobile-nav-item" onClick={()=>go(tab==='ranks'?'home':'ranks')} aria-label="More">
-            <i className="ti ti-dots" aria-hidden="true"/>
-            <span>More</span>
+          <button className={`mobile-nav-item${tab==='home'?' on':''}`} onClick={()=>go('home')} aria-label="Home">
+            <i className="ti ti-layout-dashboard" aria-hidden="true"/><span>Home</span>
           </button>
+          <button className={`mobile-nav-item${tab==='network'?' on':''}`} onClick={()=>go('network')} aria-label="Network">
+            <i className="ti ti-binary-tree-2" aria-hidden="true"/><span>Network</span>
+          </button>
+          <button className={`mobile-nav-item${tab==='shop'?' on':''}`} onClick={()=>go('shop')} aria-label="Shop">
+            <i className="ti ti-shopping-bag" aria-hidden="true"/><span>Shop</span>
+            {cartQty>0&&<span className="m-badge">{cartQty}</span>}
+          </button>
+          <button className={`mobile-nav-item${tab==='earnings'?' on':''}`} onClick={()=>go('earnings')} aria-label="Earnings">
+            <i className="ti ti-coin" aria-hidden="true"/><span>Earnings</span>
+          </button>
+          <Link href="/travel">
+            <button className="mobile-nav-item" aria-label="Travel">
+              <i className="ti ti-plane" aria-hidden="true"/><span>Travel</span>
+            </button>
+          </Link>
+          <Link href="/admin">
+            <button className="mobile-nav-item" aria-label="Admin">
+              <i className="ti ti-settings" aria-hidden="true"/><span>Admin</span>
+            </button>
+          </Link>
         </div>
       </nav>
 
