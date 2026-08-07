@@ -188,7 +188,7 @@ input, select, textarea { font-family: var(--font); }
 /* ── APP CONTENT ── */
 .app-content {
   flex: 1; padding: 20px; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 14px;
+  display: flex; flex-direction: column; gap: 12px;
   background: var(--bg);
 }
 
@@ -220,7 +220,7 @@ input, select, textarea { font-family: var(--font); }
   color: var(--gold-lt); line-height: 1;
 }
 .dt-card-header-sub { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 5px; }
-.dt-card-body { padding: 16px 20px; }
+.dt-card-body { padding: 14px 20px 18px; }
 
 /* ── STAT ROW — DreamTrips horizontal numbers ── */
 .stat-row { display: flex; }
@@ -340,9 +340,9 @@ select.field-input { cursor: pointer; }
 .wallet { border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow-md); }
 .wallet-earn { background: var(--maroon); }
 .wallet-lifestyle { background: var(--maroon); }
-.wallet-inner { padding: 20px; }
+.wallet-inner { padding: 18px 20px; }
 .wallet-label { font-size: 10px; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 10px; }
-.wallet-amount { font-family: var(--display); font-size: 40px; font-weight: 600; color: var(--gold-lt); line-height: 1; margin-bottom: 4px; }
+.wallet-amount { font-family: var(--display); font-size: 36px; font-weight: 600; color: var(--gold-lt); line-height: 1; margin-bottom: 4px; }
 .wallet-sub { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 14px; line-height: 1.5; }
 .wallet-date {
   display: flex; align-items: center; gap: 8px;
@@ -518,66 +518,137 @@ select.field-input { cursor: pointer; }
 .mobile-nav {
   display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
   background: var(--maroon);
-  border-top: 1px solid rgba(0,0,0,0.15);
-  padding: 0 4px env(safe-area-inset-bottom, 8px); height: 62px;
-  box-shadow: 0 -2px 16px rgba(0,0,0,0.15);
+  border-top: 1px solid rgba(0,0,0,0.2);
+  padding: 0 env(safe-area-inset-right, 0) env(safe-area-inset-bottom, 0) env(safe-area-inset-left, 0);
+  height: 64px;
+  box-shadow: 0 -2px 20px rgba(0,0,0,0.18);
 }
-.mobile-nav-inner { display: flex; align-items: center; justify-content: space-around; height: 100%; }
+.mobile-nav-inner {
+  display: flex; align-items: stretch; justify-content: stretch;
+  height: 64px; width: 100%;
+}
 .mobile-nav-item {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 3px; min-width: 44px; min-height: 44px; padding: 4px 8px;
-  background: none; border: none; color: rgba(255,255,255,0.4);
-  border-radius: var(--r-sm); position: relative;
-  transition: color 0.15s; -webkit-tap-highlight-color: transparent;
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 3px; padding: 6px 2px 8px;
+  background: none; border: none; color: rgba(255,255,255,0.38);
+  position: relative; transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent; cursor: pointer;
+  text-decoration: none;
 }
 .mobile-nav-item.on { color: var(--gold-lt); }
-.mobile-nav-item i   { font-size: 22px; }
-.mobile-nav-item span { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 700; }
+.mobile-nav-item i   { font-size: 20px; line-height: 1; }
+.mobile-nav-item span {
+  font-size: 8px; letter-spacing: 0.04em; text-transform: uppercase;
+  font-weight: 700; line-height: 1; white-space: nowrap;
+}
 .mobile-nav-item .m-badge {
-  position: absolute; top: 5px; right: 7px;
-  width: 14px; height: 14px; border-radius: 50%;
+  position: absolute; top: 4px; right: calc(50% - 18px);
+  width: 13px; height: 13px; border-radius: 50%;
   background: var(--gold); color: var(--maroon);
-  font-size: 8px; font-weight: 800;
+  font-size: 7px; font-weight: 800;
   display: flex; align-items: center; justify-content: center;
 }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
+  /* Layout */
   .rail { display: none !important; }
   .app-topbar { display: none; }
   .mobile-nav { display: flex; }
   .mobile-topbar { display: flex; }
-  .app-main { padding-bottom: 70px; }
-  .app-content { padding: 12px 12px 24px; gap: 12px; }
-  .wallet-amount { font-size: 34px; }
+  .app-shell { min-height: 100vh; }
+  .app-main { padding-bottom: 68px; flex: 1; }
+  .app-content { padding: 14px 14px 20px; gap: 12px; }
+
+  /* Cards */
+  .card { padding: 14px 16px; border-radius: var(--r-sm); }
+  .dt-card { border-radius: var(--r-sm); }
+  .dt-card-body { padding: 14px 16px; }
+  .dt-card-header { padding: 16px 16px 14px; }
+  .dt-card-header-value { font-size: 30px; }
+
+  /* Wallets */
+  .wallet-inner { padding: 16px; }
+  .wallet-amount { font-size: 32px; }
+  .wallet-sub { font-size: 11px; }
+
+  /* Stats */
+  .stat-row { flex-wrap: wrap; }
+  .stat-item { flex: 1 1 50%; min-width: 0; padding: 14px 12px; }
+  .stat-num { font-size: 24px; }
+
+  /* Metrics */
   .metric-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
-  .metric { padding: 14px; }
-  .metric-val { font-size: 24px; }
-  .card { padding: 14px; }
+  .metric { padding: 12px 14px; border-radius: var(--r-xs); }
+  .metric-val { font-size: 22px; }
+  .metric-label { font-size: 9px; }
+
+  /* Tables */
   .card-flush { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .data-table { min-width: 480px; }
-  .data-table th, .data-table td { padding: 10px 12px; }
-  .pkg-grid { grid-template-columns: 1fr; }
+  .data-table { min-width: 460px; }
+  .data-table th { padding: 10px 12px; font-size: 9px; }
+  .data-table td { padding: 11px 12px; font-size: 12px; }
+
+  /* Packages */
+  .pkg-grid { grid-template-columns: 1fr; gap: 12px; }
+  .pkg-header { padding: 20px 16px 16px; }
   .pkg-size { font-size: 40px; }
-  .cart-bar { bottom: 70px; margin: 0 8px; padding: 12px 16px; gap: 12px; }
+  .pkg-body { padding: 14px 16px; }
+
+  /* Cart */
+  .cart-bar { bottom: 70px; margin: 0 10px; padding: 12px 16px; gap: 10px; border-radius: var(--r); }
+  .cart-stat-val { font-size: 18px; }
+
+  /* Calc */
   .calc-grid { grid-template-columns: 1fr; }
   .calc-result { order: -1; }
-  .btn { min-height: 42px; }
-  .btn-sm { min-height: 36px; }
-  .field-input { font-size: 16px; padding: 13px 14px; }
+
+  /* Tree */
+  .tree-wrap { padding: 16px 0 20px; }
+  .tree-card { min-width: 90px; padding: 8px 10px; }
+  .tree-name { font-size: 11px; }
+  .tree-legs { gap: 16px; }
+
+  /* Forms */
+  .field-input { font-size: 16px; padding: 13px 14px; border-radius: var(--r-xs); }
+  .field { margin-bottom: 12px; }
+
+  /* Buttons */
+  .btn { min-height: 44px; border-radius: var(--r-sm); }
+  .btn-sm { min-height: 38px; padding: 9px 16px; }
+  .btn-xs { min-height: 32px; }
+  .btn-full { border-radius: var(--r-sm); }
+
+  /* Hotels */
+  .hotel-img { height: 160px; }
+  .hotel-card { border-radius: var(--r-sm); }
+  .hotel-body { padding: 12px 14px; }
+  .hotel-name { font-size: 14px; }
+  .hotel-price { font-size: 20px; }
+
+  /* Public */
   .site-nav a:not(.nav-btn) { display: none; }
   .site-header { height: 54px; }
-  .hero { padding: 44px 0 32px; }
-  .hero-title { font-size: clamp(28px, 8vw, 40px); }
-  .toast { bottom: 76px; width: calc(100vw - 32px); white-space: normal; text-align: center; }
-  .stat-row { flex-wrap: wrap; }
-  .stat-item { min-width: 50%; }
-  .dt-card-header-value { font-size: 30px; }
-  .hotel-img { height: 160px; }
+  .hero { padding: 40px 0 28px; }
+  .hero-title { font-size: clamp(26px, 8vw, 38px); }
+  .section { padding: 40px 0; }
+  .container { padding: 0 16px; }
+
+  /* Toast */
+  .toast { bottom: 76px; width: calc(100vw - 28px); white-space: normal; text-align: center; font-size: 12px; padding: 10px 16px; }
+
+  /* Wallet date strip */
+  .wallet-date { padding: 8px 12px; font-size: 11px; }
+  .wallet-action { padding: 7px 12px; font-size: 10px; }
 }
+
 @media (max-width: 380px) {
   .app-content { padding: 10px; gap: 10px; }
-  .metric-val { font-size: 20px; }
-  .wallet-amount { font-size: 28px; }
+  .metric-val { font-size: 19px; }
+  .wallet-amount { font-size: 26px; }
+  .stat-num { font-size: 20px; }
   .mobile-nav-item span { display: none; }
+  .mobile-nav-item { min-width: 36px; }
+  .dt-card-header-value { font-size: 26px; }
 }
