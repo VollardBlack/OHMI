@@ -196,7 +196,7 @@ export default function Dashboard() {
 
       {/* Mobile topbar */}
       <div className="mobile-topbar">
-        <span className="mobile-topbar-logo">OHMI</span>
+        <span className="mobile-topbar-logo">OHMI<span style={{color:"var(--gold)"}}>.</span></span>
         <div style={{display:'flex',gap:8,alignItems:'center'}}>
           <span className="pill pill-primary" style={{fontSize:9}}>{currentRank?.name||'Unranked'}</span>
           <Link href="/admin">
@@ -251,7 +251,7 @@ export default function Dashboard() {
 
         {/* Icon rail (tablet) */}
         <aside className="rail">
-          <div className="rail-logo">O</div>
+          <div className="rail-logo" style={{fontFamily:"var(--display)"}}>O</div>
           <nav className="rail-nav">
             {NAV.filter(n=>n.id||n.href).map((item,i)=>(
               item.href ? (
@@ -555,7 +555,7 @@ export default function Dashboard() {
                   {/* Header */}
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
                     <div>
-                      <div className="section-title">OHMI Coffee Shop</div>
+                      <div class="section-title" style={{fontFamily:"var(--display)"}}>The Coffee Shop</div>
                       <div style={{fontSize:13,color:'var(--text-muted)',marginTop:2}}>
                         Single origin & blends · 1kg · 100% Arabica
                         {isMember&&<span style={{marginLeft:8,color:'var(--green-text)',fontWeight:600}}>· Member price R365</span>}
