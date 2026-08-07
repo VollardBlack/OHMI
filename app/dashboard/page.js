@@ -25,6 +25,7 @@ const TABS = [
   { id:'earnings',  icon:'ti-coin',              tip:'Earnings' },
   { id:'lifestyle', icon:'ti-sparkles',          tip:'Lifestyle' },
   { id:'ranks',     icon:'ti-trophy',            tip:'Ranks' },
+  { id:'travel',    icon:'ti-plane',             tip:'Travel', href:'/travel' },
 ];
 
 const R = n => 'R\u202f' + Number(n||0).toLocaleString('en-ZA',{minimumFractionDigits:0,maximumFractionDigits:0});
@@ -218,10 +219,13 @@ export default function Dashboard() {
           <div className="rail-logo">O</div>
           <nav className="rail-nav">
             {TABS.map(t=>(
+              t.href ? (
+                <Link key={t.id} href={t.href}><button className={`rail-item${tab===t.id?' on':''}`} data-tip={t.tip} aria-label={t.tip}><i className={`ti ${t.icon}`} aria-hidden="true"/></button></Link>
+              ) : (
               <button key={t.id} className={`rail-item${tab===t.id?' on':''}`} data-tip={t.tip} onClick={()=>go(t.id)} aria-label={t.tip}>
                 <i className={`ti ${t.icon}`} aria-hidden="true"/>
                 {t.id==='shop'&&cartQty>0&&<span className="badge">{cartQty}</span>}
-              </button>
+              </button>)
             ))}
           </nav>
           <div className="rail-divider"/>
@@ -713,6 +717,7 @@ export default function Dashboard() {
               {t.id==='shop'&&cartQty>0&&<span className="m-badge">{cartQty}</span>}
             </button>
           ))}
+          <Link href="/travel"><button className="mobile-nav-item" aria-label="Travel"><i className="ti ti-plane" aria-hidden="true"/><span>Travel</span></button></Link>
           <button className="mobile-nav-item" onClick={()=>go(tab==='ranks'?'home':'ranks')} aria-label="More">
             <i className="ti ti-dots" aria-hidden="true"/>
             <span>More</span>
