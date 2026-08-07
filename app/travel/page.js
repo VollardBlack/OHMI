@@ -1,7 +1,24 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { searchHotels, DESTINATIONS, MOCK_MODE } from '@/lib/ratehawk';
+// API-based search — keys are server-side only
+const DESTINATIONS = ['Cape Town','Johannesburg','Durban','Garden Route','Kruger','Zanzibar','Mauritius','Dubai','Hermanus','Knysna','Stellenbosch','Port Elizabeth'];
+
+async function searchHotelsAPI(q, checkIn, checkOut, guests) {
+  const res = await fetch(`/api/search/hotels?q=${encodeURIComponent(q)}&check_in=${checkIn}&check_out=${checkOut}&adults=${guests}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Search failed');
+  return { hotels: data.hotels || [], mock: data.mock || false };
+}
+
+async function searchFlightsAPI(origin, destination, date, returnDate, adults, cabin) {
+  const params = new URLSearchParams({ origin, destination, date, adults, cabin: cabin || 'ECONOMY' });
+  if (returnDate) params.set('return_date', returnDate);
+  const res = await fetch(`/api/search/flights?${params}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Search failed');
+  return { flights: data.flights || [], mock: data.mock || false };
+}
 
 const Rz = n => 'R\u202f' + Number(n||0).toLocaleString('en-ZA',{minimumFractionDigits:0,maximumFractionDigits:0});
 const Dz = d => d ? new Date(d).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}) : '—';
@@ -435,6 +452,120 @@ function CarRequest({me, ptBal, onDone, flash}) {
   );
 }
 
+
+// ── Flight booking panel ──────────────────────────────────
+function FlightBookingPanel({flight, pax, ptBal, me, onBack, onDone, flash}) {
+  const [pts, setPts] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [ref, setRef] = useState('');
+  const total = flight.price;
+  const maxPts = Math.min(ptBal, total);
+  const cash = Math.max(0, total - pts);
+
+  async function confirm() {
+    setBusy(true);
+    const bookRef = 'VB-F-' + Date.now().toString(36).toUpperCase();
+    // Store as a travel_request so admin can process
+    await supabase.from('travel_requests').insert({
+      member_id:me.id, booking_ref:bookRef, type:'flight',
+      flight_from:flight.from.code, flight_to:flight.to.code,
+      depart_date:flight.depart_dt?.slice(0,10)||null,
+      return_date:flight.return_leg?flight.return_leg.departure?.slice(0,10):null,
+      trip_type:flight.return_leg?'return':'oneway',
+      passengers:pax, cabin_class:flight.cabin_class,
+      special_requests:`${flight.airline} ${flight.flight_number} · ${Rz(total)}`,
+      points_to_use:pts, quoted_amount:total, status:'quoted',
+    });
+    if(pts>0) await supabase.from('lifestyle_ledger').insert({
+      member_id:me.id,entry_type:'redemption',points:pts,
+      note:`Flight ${flight.from.code}→${flight.to.code} ${bookRef}`,
+      period:new Date().toISOString().slice(0,7)+'-01',
+    });
+    setBusy(false); setRef(bookRef);
+  }
+
+  if(ref) return (
+    <div>
+      <button className="btn btn-ghost btn-sm" style={{marginBottom:14}} onClick={onDone}>← My trips</button>
+      <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',borderRadius:'var(--r-lg)',padding:'28px 24px',color:'#fff',textAlign:'center'}}>
+        <div style={{fontSize:48,marginBottom:12}}>✈️</div>
+        <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',opacity:0.7,marginBottom:8}}>Flight booking submitted</div>
+        <div style={{fontSize:22,fontWeight:800,marginBottom:4}}>{flight.from.code} → {flight.to.code}</div>
+        <div style={{fontSize:13,opacity:0.8,marginBottom:20}}>{flight.airline} {flight.flight_number} · {pax} pax · {flight.cabin_class}</div>
+        <div style={{background:'rgba(0,0,0,0.15)',borderRadius:'var(--r-sm)',padding:'14px 16px',textAlign:'left',marginBottom:16,lineHeight:1.8,fontSize:13}}>
+          <div style={{fontWeight:700,opacity:0.8,marginBottom:6}}>What happens next</div>
+          <div style={{opacity:0.8}}>
+            1. Ref: <strong>{ref}</strong><br/>
+            2. Vollard Black confirms availability & issues tickets<br/>
+            3. Pay {Rz(cash)} via EFT to finalise<br/>
+            4. E-tickets sent to your email
+          </div>
+        </div>
+        <button onClick={onDone} style={{background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.3)',borderRadius:'var(--r-full)',padding:'10px 24px',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>View my trips</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      <button className="btn btn-ghost btn-sm" style={{marginBottom:14}} onClick={onBack}>← Results</button>
+      {/* Flight summary */}
+      <div className="card" style={{marginBottom:12}}>
+        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
+          <div style={{width:44,height:44,borderRadius:'var(--r-sm)',background:'linear-gradient(135deg,#1e3a5f,#6366F1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+            <span style={{fontSize:11,fontWeight:800,color:'#fff'}}>{flight.airline_code}</span>
+          </div>
+          <div>
+            <div style={{fontWeight:700,fontSize:15}}>{flight.airline}</div>
+            <div style={{fontSize:12,color:'var(--text-muted)'}}>{flight.flight_number} · {flight.cabin_class} · {pax} passenger{pax!==1?'s':''}</div>
+          </div>
+        </div>
+        <div style={{background:'var(--surface-1)',borderRadius:'var(--r-sm)',padding:'16px',marginBottom:10}}>
+          <div style={{fontSize:9,fontWeight:700,color:'var(--text-dim)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>Outbound</div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <div><div style={{fontFamily:'monospace',fontSize:24,fontWeight:800}}>{flight.departure}</div><div style={{fontSize:13,fontWeight:700,color:'var(--text-muted)'}}>{flight.from.code}</div></div>
+            <div style={{flex:1,textAlign:'center'}}><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:4}}>{flight.duration}</div><div style={{height:1.5,background:'var(--border-md)'}}/></div>
+            <div style={{textAlign:'right'}}><div style={{fontFamily:'monospace',fontSize:24,fontWeight:800}}>{flight.arrival}</div><div style={{fontSize:13,fontWeight:700,color:'var(--text-muted)'}}>{flight.to.code}</div></div>
+          </div>
+        </div>
+        {flight.return_leg&&<div style={{background:'rgba(99,102,241,0.05)',borderRadius:'var(--r-sm)',padding:'16px',border:'1px solid var(--primary-border)',marginBottom:10}}>
+          <div style={{fontSize:9,fontWeight:700,color:'var(--primary)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>Return</div>
+          <div style={{display:'flex',alignItems:'center',gap:8}}>
+            <div><div style={{fontFamily:'monospace',fontSize:24,fontWeight:800}}>{flight.return_leg.departure}</div><div style={{fontSize:13,fontWeight:700,color:'var(--text-muted)'}}>{flight.to.code}</div></div>
+            <div style={{flex:1,textAlign:'center'}}><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:4}}>{flight.return_leg.duration}</div><div style={{height:1.5,background:'var(--border-md)'}}/></div>
+            <div style={{textAlign:'right'}}><div style={{fontFamily:'monospace',fontSize:24,fontWeight:800}}>{flight.return_leg.arrival}</div><div style={{fontSize:13,fontWeight:700,color:'var(--text-muted)'}}>{flight.from.code}</div></div>
+          </div>
+        </div>}
+        <div style={{fontSize:11,color:'var(--text-muted)',display:'flex',alignItems:'center',gap:5}}>
+          🧳 {flight.baggage}
+        </div>
+      </div>
+      {/* Points */}
+      {ptBal>0&&<div className="card card-bordered" style={{marginBottom:12}}>
+        <div className="section-label" style={{marginBottom:8}}>Apply lifestyle points</div>
+        <div style={{fontSize:12,color:'var(--text-sub)',marginBottom:8}}>Available: <strong style={{color:'var(--primary)'}}>{ptBal.toLocaleString()} pts = {Rz(ptBal)}</strong></div>
+        <input type="range" min={0} max={maxPts} step={50} value={pts} onChange={e=>setPts(Number(e.target.value))} style={{width:'100%',accentColor:'var(--primary)',marginBottom:8}}/>
+        <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
+          <span>Using: <strong style={{color:'var(--primary)'}}>{Rz(pts)}</strong></span>
+          <span>Cash due: <strong style={{color:cash>0?'var(--amber)':'var(--green-text)'}}>{cash>0?Rz(cash):'Fully covered ✓'}</strong></span>
+        </div>
+      </div>}
+      {/* Total */}
+      <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',borderRadius:'var(--r)',padding:'16px 20px',marginBottom:12,color:'#fff'}}>
+        <div style={{fontSize:10,opacity:0.65,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:4}}>Total · {pax} pax</div>
+        <div style={{fontSize:28,fontWeight:800,letterSpacing:'-0.02em'}}>{Rz(total)}</div>
+        {pts>0&&<div style={{fontSize:12,opacity:0.7,marginTop:4}}>{Rz(pts)} points · {Rz(cash)} EFT</div>}
+      </div>
+      <div style={{display:'flex',gap:10}}>
+        <button className="btn btn-ghost" onClick={onBack}>← Back</button>
+        <button className="btn btn-primary" style={{flex:1}} disabled={busy} onClick={confirm}>
+          {busy?'Submitting…':cash>0?`Confirm — EFT ${Rz(cash)}`:'Confirm booking'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────
 export default function Travel() {
   const [type, setType] = useState('hotels');
@@ -487,14 +618,41 @@ export default function Travel() {
 
   useEffect(()=>{loadData();},[]);
 
+  const [hotelsMock, setHotelsMock] = useState(false);
+  const [flightsMock, setFlightsMock] = useState(false);
+  const [flights, setFlights] = useState([]);
+  const [selFlight, setSelFlight] = useState(null);
+  const [flightSearched, setFlightSearched] = useState(false);
+  const [flightSearching, setFlightSearching] = useState(false);
+  // Flight form state
+  const [flightOrigin, setFlightOrigin] = useState('CPT');
+  const [flightDest, setFlightDest] = useState('JNB');
+  const [flightDate, setFlightDate] = useState(dateIn(14));
+  const [flightReturn, setFlightReturn] = useState(dateIn(21));
+  const [flightTrip, setFlightTrip] = useState('return');
+  const [flightPax, setFlightPax] = useState('1');
+  const [flightCabin, setFlightCabin] = useState('ECONOMY');
+
   async function doHotelSearch() {
     if(!dest){flash('Enter a destination');return;}
     setSearching(true); setSearched(false); setSelHotel(null);
     try {
-      const r = await searchHotels({destination:dest,checkIn,checkOut,guests});
-      setHotels(r);
-    } catch(e){ flash('Search failed'); }
+      const r = await searchHotelsAPI(dest, checkIn, checkOut, guests);
+      setHotels(r.hotels);
+      setHotelsMock(r.mock);
+    } catch(e){ flash('Hotel search failed: ' + e.message); }
     setSearching(false); setSearched(true);
+  }
+
+  async function doFlightSearch() {
+    if(!flightOrigin||!flightDest){flash('Enter origin and destination');return;}
+    setFlightSearching(true); setFlightSearched(false); setSelFlight(null);
+    try {
+      const r = await searchFlightsAPI(flightOrigin, flightDest, flightDate, flightTrip==='return'?flightReturn:null, flightPax, flightCabin);
+      setFlights(r.flights);
+      setFlightsMock(r.mock);
+    } catch(e){ flash('Flight search failed: ' + e.message); }
+    setFlightSearching(false); setFlightSearched(true);
   }
 
   const allRequests = [...bookings.map(b=>({...b,_kind:'hotel'})), ...requests.map(r=>({...r,_kind:r.type}))];
@@ -528,7 +686,7 @@ export default function Travel() {
               <i className="ti ti-arrow-left" style={{fontSize:14}}/>Dashboard
             </a>
             <span className="app-topbar-title" style={{marginLeft:8}}>Travel · Vollard Black</span>
-            {MOCK_MODE&&<span className="pill pill-amber" style={{fontSize:9}}>Demo mode</span>}
+            
             <div className="app-topbar-right">
               <span className="pill pill-primary">
                 <i className="ti ti-sparkles" style={{fontSize:11,marginRight:4}}/>
@@ -672,8 +830,181 @@ export default function Travel() {
               )}
 
               {/* ── FLIGHTS ── */}
-              {type==='flights'&&(
-                <FlightRequest me={me} ptBal={ptBal} onDone={()=>{loadData();setView('bookings');}} flash={flash}/>
+              {type==='flights'&&!selFlight&&(
+                <>
+                  {/* Search form */}
+                  <div className="card">
+                    <div style={{display:'flex',gap:8,marginBottom:14}}>
+                      {['return','oneway'].map(t=>(
+                        <button key={t} onClick={()=>setFlightTrip(t)}
+                          className={flightTrip===t?'btn btn-primary btn-sm':'btn btn-ghost btn-sm'}
+                          style={{borderRadius:'var(--r-full)',flex:1}}>
+                          {t==='return'?'✈ Return':'→ One way'}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',gap:8,alignItems:'end',marginBottom:14}}>
+                      <div className="field" style={{marginBottom:0}}>
+                        <label className="field-label">From (IATA)</label>
+                        <input className="field-input" value={flightOrigin} onChange={e=>setFlightOrigin(e.target.value.toUpperCase())} placeholder="CPT" maxLength={3} style={{textTransform:'uppercase',letterSpacing:'0.1em',fontWeight:700}}/>
+                      </div>
+                      <button onClick={()=>{const t=flightOrigin;setFlightOrigin(flightDest);setFlightDest(t);}}
+                        style={{height:44,width:40,background:'var(--primary-bg)',border:'1px solid var(--primary-border)',borderRadius:'var(--r-full)',cursor:'pointer',fontSize:16,color:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:0,flexShrink:0,fontFamily:'inherit'}}>
+                        ⇄
+                      </button>
+                      <div className="field" style={{marginBottom:0}}>
+                        <label className="field-label">To (IATA)</label>
+                        <input className="field-input" value={flightDest} onChange={e=>setFlightDest(e.target.value.toUpperCase())} placeholder="JNB" maxLength={3} style={{textTransform:'uppercase',letterSpacing:'0.1em',fontWeight:700}}/>
+                      </div>
+                    </div>
+                    {/* Common SA routes */}
+                    <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:14,marginTop:-8}}>
+                      {[['CPT','JNB'],['CPT','DUR'],['JNB','CPT'],['JNB','DXB'],['JNB','LHR'],['CPT','MRU']].map(([o,d])=>(
+                        <button key={o+d} onClick={()=>{setFlightOrigin(o);setFlightDest(d);}}
+                          className={(flightOrigin===o&&flightDest===d)?'btn btn-primary btn-xs':'btn btn-white btn-xs'}
+                          style={{borderRadius:'var(--r-full)',fontSize:11,letterSpacing:'0.04em',fontWeight:700}}>
+                          {o}→{d}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:`1fr${flightTrip==='return'?' 1fr':''} 1fr 1fr`,gap:10,marginBottom:14}}>
+                      <div className="field" style={{marginBottom:0}}>
+                        <label className="field-label">Depart</label>
+                        <input className="field-input" type="date" value={flightDate} min={dateIn(1)} onChange={e=>setFlightDate(e.target.value)}/>
+                      </div>
+                      {flightTrip==='return'&&<div className="field" style={{marginBottom:0}}>
+                        <label className="field-label">Return</label>
+                        <input className="field-input" type="date" value={flightReturn} min={flightDate} onChange={e=>setFlightReturn(e.target.value)}/>
+                      </div>}
+                      <div className="field" style={{marginBottom:0}}>
+                        <label className="field-label">Pax</label>
+                        <select className="field-input" value={flightPax} onChange={e=>setFlightPax(e.target.value)}>
+                          {[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}</option>)}
+                        </select>
+                      </div>
+                      <div className="field" style={{marginBottom:0}}>
+                        <label className="field-label">Cabin</label>
+                        <select className="field-input" value={flightCabin} onChange={e=>setFlightCabin(e.target.value)}>
+                          {[['ECONOMY','Economy'],['PREMIUM_ECONOMY','Prem. Eco'],['BUSINESS','Business'],['FIRST','First']].map(([v,l])=><option key={v} value={v}>{l}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <button className="btn btn-primary btn-full" disabled={flightSearching} onClick={doFlightSearch} style={{fontSize:14,padding:'13px'}}>
+                      {flightSearching?'Scanning flights…':'Search flights'}
+                    </button>
+                  </div>
+
+                  {/* Results */}
+                  {flightSearching&&(
+                    <div style={{textAlign:'center',padding:'32px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}>
+                      <div style={{fontSize:32,marginBottom:10}}>✈️</div>
+                      <div style={{fontWeight:600,color:'var(--text-h)',marginBottom:4}}>Scanning {flightsMock?'demo':'live'} fares…</div>
+                      <div style={{fontSize:12,color:'var(--text-muted)'}}>{flightOrigin} → {flightDest} · {flightDate}</div>
+                    </div>
+                  )}
+
+                  {flightSearched&&!flightSearching&&(
+                    <>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                        <span className="section-label">{flights.length} flight{flights.length!==1?'s':''} · {flightOrigin} → {flightDest}</span>
+                        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+                          {flightsMock&&<span className="pill pill-amber" style={{fontSize:9}}>Demo data — add AMADEUS_CLIENT_ID to enable live fares</span>}
+                          <span style={{fontSize:12,color:'var(--text-muted)'}}>{flightPax} pax · {flightCabin}</span>
+                        </div>
+                      </div>
+                      {flights.length===0?(
+                        <div style={{textAlign:'center',padding:'32px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}>
+                          <div style={{fontSize:36,marginBottom:10}}>✈️</div>
+                          <div style={{fontWeight:600,color:'var(--text-h)',marginBottom:4}}>No flights found</div>
+                          <div style={{fontSize:12,color:'var(--text-muted)'}}>Try different dates or routes</div>
+                        </div>
+                      ):(
+                        <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                          {flights.map(f=>(
+                            <div key={f.id} className="card" style={{cursor:'pointer',transition:'box-shadow 0.15s,transform 0.15s'}}
+                              onClick={()=>setSelFlight(f)}
+                              onMouseEnter={e=>{e.currentTarget.style.boxShadow='var(--shadow-md)';e.currentTarget.style.transform='translateY(-1px)';}}
+                              onMouseLeave={e=>{e.currentTarget.style.boxShadow='';e.currentTarget.style.transform='';}}>
+                              {/* Airline header */}
+                              <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
+                                <div style={{width:44,height:44,borderRadius:'var(--r-sm)',background:'linear-gradient(135deg,#1e3a5f,#6366F1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                                  <span style={{fontSize:11,fontWeight:800,color:'#fff',letterSpacing:'0.04em'}}>{f.airline_code}</span>
+                                </div>
+                                <div style={{flex:1}}>
+                                  <div style={{fontWeight:700,fontSize:14,color:'var(--text-h)'}}>{f.airline}</div>
+                                  <div style={{fontSize:11,color:'var(--text-muted)'}}>{f.flight_number} · {f.cabin_class} · {f.stops===0?'Non-stop':`${f.stops} stop`}</div>
+                                </div>
+                                <div style={{textAlign:'right'}}>
+                                  <div style={{fontSize:24,fontWeight:800,color:'var(--text-h)',letterSpacing:'-0.02em'}}>{Rz(f.price)}</div>
+                                  <div style={{fontSize:10,color:'var(--text-muted)'}}>{Number(flightPax)>1?`total · ${Rz(Math.round(f.price/Number(flightPax)))} pp`:'total'}</div>
+                                </div>
+                              </div>
+                              {/* Outbound leg */}
+                              <div style={{background:'var(--surface-1)',borderRadius:'var(--r-sm)',padding:'14px 16px',marginBottom:f.return_leg?8:0}}>
+                                <div style={{fontSize:9,fontWeight:700,color:'var(--text-dim)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:8}}>Outbound · {f.depart_dt?.slice(0,10)||flightDate}</div>
+                                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                                  <div style={{textAlign:'left'}}>
+                                    <div style={{fontFamily:'monospace',fontSize:22,fontWeight:800,color:'var(--text-h)'}}>{f.departure}</div>
+                                    <div style={{fontSize:12,fontWeight:700,color:'var(--text-muted)'}}>{f.from.code}</div>
+                                  </div>
+                                  <div style={{flex:1,textAlign:'center',padding:'0 8px'}}>
+                                    <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>{f.duration}</div>
+                                    <div style={{display:'flex',alignItems:'center',gap:4}}>
+                                      <div style={{flex:1,height:1.5,background:'var(--border-md)'}}/>
+                                      <span style={{color:'var(--primary)',fontSize:14}}>✈</span>
+                                      <div style={{flex:1,height:1.5,background:'var(--border-md)'}}/>
+                                    </div>
+                                    <div style={{fontSize:10,fontWeight:600,color:f.stops===0?'var(--green-text)':'var(--amber)',marginTop:3}}>{f.stops===0?'Non-stop':`${f.stops} stop`}</div>
+                                  </div>
+                                  <div style={{textAlign:'right'}}>
+                                    <div style={{fontFamily:'monospace',fontSize:22,fontWeight:800,color:'var(--text-h)'}}>{f.arrival}</div>
+                                    <div style={{fontSize:12,fontWeight:700,color:'var(--text-muted)'}}>{f.to.code}</div>
+                                  </div>
+                                </div>
+                              </div>
+                              {/* Return leg */}
+                              {f.return_leg&&(
+                                <div style={{background:'rgba(99,102,241,0.04)',borderRadius:'var(--r-sm)',padding:'14px 16px',border:'1px solid var(--primary-border)'}}>
+                                  <div style={{fontSize:9,fontWeight:700,color:'var(--primary)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:8}}>Return · {flightReturn}</div>
+                                  <div style={{display:'flex',alignItems:'center',gap:8}}>
+                                    <div style={{textAlign:'left'}}>
+                                      <div style={{fontFamily:'monospace',fontSize:22,fontWeight:800,color:'var(--text-h)'}}>{f.return_leg.departure}</div>
+                                      <div style={{fontSize:12,fontWeight:700,color:'var(--text-muted)'}}>{f.to.code}</div>
+                                    </div>
+                                    <div style={{flex:1,textAlign:'center',padding:'0 8px'}}>
+                                      <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>{f.return_leg.duration}</div>
+                                      <div style={{display:'flex',alignItems:'center',gap:4}}>
+                                        <div style={{flex:1,height:1.5,background:'var(--border-md)'}}/>
+                                        <span style={{color:'var(--primary)',fontSize:14}}>✈</span>
+                                        <div style={{flex:1,height:1.5,background:'var(--border-md)'}}/>
+                                      </div>
+                                      <div style={{fontSize:10,fontWeight:600,color:f.return_leg.stops===0?'var(--green-text)':'var(--amber)',marginTop:3}}>{f.return_leg.stops===0?'Non-stop':`${f.return_leg.stops} stop`}</div>
+                                    </div>
+                                    <div style={{textAlign:'right'}}>
+                                      <div style={{fontFamily:'monospace',fontSize:22,fontWeight:800,color:'var(--text-h)'}}>{f.return_leg.arrival}</div>
+                                      <div style={{fontSize:12,fontWeight:700,color:'var(--text-muted)'}}>{f.from.code}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              {/* Baggage */}
+                              <div style={{marginTop:10,fontSize:11,color:'var(--text-muted)',display:'flex',alignItems:'center',gap:6}}>
+                                <span>🧳</span>{f.baggage}
+                                <span style={{marginLeft:'auto',color:'var(--primary)',fontWeight:600,fontSize:12}}>Book this flight →</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
+
+              {/* ── FLIGHT BOOKING ── */}
+              {type==='flights'&&selFlight&&(
+                <FlightBookingPanel flight={selFlight} pax={Number(flightPax)} ptBal={ptBal} me={me}
+                  onBack={()=>setSelFlight(null)} onDone={()=>{loadData();setView('bookings');}} flash={flash}/>
               )}
 
               {/* ── CARS ── */}
