@@ -456,3 +456,86 @@ select.field-input { cursor: pointer; }
 .hero-title { font-family: var(--display); font-size: clamp(36px, 5vw, 64px); font-weight: 600; line-height: 1.08; color: var(--white); }
 .hero-title em { color: var(--gold); font-style: italic; }
 .gold-rule { width: 48px; height: 2px; background: var(--gold); margin: 18px 0; border-radius: 1px; }
+
+/* ── MOBILE BOTTOM NAV ── */
+.mobile-nav {
+  display: none;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+  background: var(--dark); border-top: 1px solid var(--border);
+  padding: 0 4px env(safe-area-inset-bottom, 8px);
+  height: 60px;
+}
+.mobile-nav-inner {
+  display: flex; align-items: center; justify-content: space-around;
+  height: 100%;
+}
+.mobile-nav-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; min-width: 44px; min-height: 44px; padding: 4px 6px;
+  background: none; border: none; color: var(--dim); cursor: pointer;
+  border-radius: var(--r-md); position: relative; transition: color 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.mobile-nav-item.on { color: var(--gold); }
+.mobile-nav-item i { font-size: 20px; }
+.mobile-nav-item span { font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; }
+.mobile-nav-item .m-badge {
+  position: absolute; top: 5px; right: 8px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--gold); color: var(--black);
+  font-size: 8px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* ── MOBILE TOPBAR ── */
+.mobile-topbar {
+  display: none;
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(8,8,8,0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  height: 52px; padding: 0 16px;
+  align-items: center; justify-content: space-between;
+}
+.mobile-topbar-logo { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 20px; font-weight: 600; color: var(--gold); }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  .rail { display: none !important; }
+  .mobile-nav { display: flex; }
+  .mobile-topbar { display: flex; }
+  .app-topbar { display: none; }
+  .app-main { padding-bottom: 68px; }
+  .app-content { padding: 14px 14px 20px; gap: 12px; }
+  .wallet { padding: 16px; }
+  .wallet-amount { font-size: 26px; }
+  .metric-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .metric { padding: 14px; }
+  .metric-val { font-size: 22px; }
+  .card { padding: 14px; border-radius: var(--r-md); }
+  .data-table { min-width: 480px; }
+  .data-table th, .data-table td { padding: 10px 12px; }
+  .pkg-grid { grid-template-columns: 1fr; }
+  .pkg-size { font-size: 36px; }
+  .cart-bar { bottom: 68px; margin: 0 10px; padding: 12px 16px; gap: 10px; border-radius: var(--r-lg); }
+  .cart-stat-val { font-size: 17px; }
+  .calc-grid { grid-template-columns: 1fr; }
+  .tree-card { min-width: 88px; padding: 8px 10px; }
+  .tree-name { font-size: 11px; }
+  .btn { min-height: 40px; }
+  .btn-sm { min-height: 36px; }
+  .field-input { padding: 13px 14px; font-size: 16px; }
+  .site-nav a:not(.nav-btn) { display: none; }
+  .site-header { height: 56px; }
+  .hero { padding: 48px 0 36px; }
+  .hero-title { font-size: clamp(28px, 8vw, 40px); }
+  .toast { bottom: 76px; width: calc(100vw - 32px); white-space: normal; text-align: center; }
+}
+
+@media (max-width: 380px) {
+  .app-content { padding: 12px; }
+  .metric-val { font-size: 19px; }
+  .wallet-amount { font-size: 22px; }
+  .mobile-nav-item span { display: none; }
+}
