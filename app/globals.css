@@ -688,3 +688,35 @@ select.field-input { cursor: pointer; }
   .wallet-amount { font-size: 26px; }
   .mobile-nav-item span { display: none; }
 }
+
+/* ── Fix: mobile-nav-item works as <a> and <button> ── */
+a.mobile-nav-item {
+  color: var(--text-muted);
+  font-family: var(--font);
+  -webkit-tap-highlight-color: transparent;
+}
+a.mobile-nav-item:hover, a.mobile-nav-item:active { color: var(--primary); }
+a.mobile-nav-item span {
+  font-size: 8px; letter-spacing: 0.04em; text-transform: uppercase;
+  font-weight: 700; line-height: 1;
+}
+a.mobile-nav-item i { font-size: 20px; line-height: 1; }
+
+/* Fix sidebar-item as <a> */
+a.sidebar-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: var(--r-sm);
+  color: var(--text-sub); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s; width: 100%;
+  text-decoration: none;
+}
+a.sidebar-item:hover { background: var(--surface-2); color: var(--text-h); }
+
+/* Fix rail-item as <a> */
+a.rail-item {
+  width: 44px; height: 44px; border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted); transition: all 0.15s;
+  text-decoration: none; font-size: 20px;
+}
+a.rail-item:hover { background: var(--surface-2); color: var(--text-h); }
