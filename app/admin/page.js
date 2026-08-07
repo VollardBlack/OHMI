@@ -78,7 +78,7 @@ function ProfitCalc() {
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {PKGS.map(p => (
           <button key={p.id}
-            className={`btn btn-sm ${sel===p.id ? 'btn-gold' : 'btn-ghost'}`}
+            className={`btn btn-sm ${sel===p.id ? 'btn-primary' : 'btn-ghost'}`}
             onClick={() => { setSel(p.id); setOverrides({}); }}>
             {p.name}
           </button>
@@ -576,21 +576,7 @@ export default function Admin() {
   const foundationTotal    = foundation.reduce((s,f)=>s+Number(f.amount),0);
   const memberById         = useMemo(() => Object.fromEntries(members.map(m=>[m.id,m.full_name])), [members]);
 
-  const treeMap = useMemo(() => {
-    const map = {};
-    nodes.forEach(n => {
-      if (n.parent_id) {
-        (map[n.parent_id] = map[n.parent_id]||[]).push({
-          ...n, name: (members.find(m=>m.id===n.member_id)?.full_name||'?').split(' ')[0],
-          status: members.find(m=>m.id===n.member_id)?.status||'pending',
-          lc: n.left_count, rc: n.right_count,
-        });
-      }
-    });
-    return map;
-  }, [nodes, members]);
-  const rootNode = nodes.find(n => !n.parent_id);
-  const rootTreeNode = rootNode ? { ...rootNode, name: (members.find(m=>m.id===rootNode.member_id)?.full_name||'Root').split(' ')[0], status: members.find(m=>m.id===rootNode.member_id)?.status||'active', lc: rootNode.left_count, rc: rootNode.right_count } : null;
+  // Tree rendering handled by BinaryTree component
 
   async function approveActivation(actId, memberId) {
     setBusy(actId);
@@ -631,9 +617,61 @@ export default function Admin() {
 
       <div className="app-shell">
 
-        {/* Rail */}
+        {/* Sidebar — desktop */}
+        <aside className="sidebar">
+          <div className="sidebar-logo">
+            <div className="sidebar-logo-text">OHMI Admin</div>
+            <div className="sidebar-logo-sub">Control panel</div>
+          </div>
+          <div className="sidebar-user">
+            <div className="sidebar-avatar" style={{background:'linear-gradient(135deg,#EF4444,#F59E0B)'}}>A</div>
+            <div>
+              <div className="sidebar-name">Admin Panel</div>
+              <div className="sidebar-rank">{activeMembers.length} active · {fmtR(poolTotal)} pool</div>
+            </div>
+          </div>
+          <nav className="sidebar-nav">
+            <div className="sidebar-section">Overview</div>
+            {[TABS[0],TABS[1],TABS[2]].map(t=>(
+              <button key={t.id} className={`sidebar-item${tab===t.id?' on':''}`} onClick={()=>setTab(t.id)}>
+                <i className={`ti ${t.icon}`} aria-hidden="true"/>
+                {t.tip}
+                {t.id==='members'&&pendingActivations.length>0&&<span className="s-badge">{pendingActivations.length}</span>}
+              </button>
+            ))}
+            <div className="sidebar-section">Commerce</div>
+            {[TABS[3],TABS[4],TABS[5]].map(t=>(
+              <button key={t.id} className={`sidebar-item${tab===t.id?' on':''}`} onClick={()=>setTab(t.id)}>
+                <i className={`ti ${t.icon}`} aria-hidden="true"/>
+                {t.tip}
+                {t.id==='orders'&&pendingOrders.length>0&&<span className="s-badge">{pendingOrders.length}</span>}
+              </button>
+            ))}
+            <div className="sidebar-section">Tools</div>
+            {[TABS[6],TABS[7]].map(t=>(
+              <button key={t.id} className={`sidebar-item${tab===t.id?' on':''}`} onClick={()=>setTab(t.id)}>
+                <i className={`ti ${t.icon}`} aria-hidden="true"/>
+                {t.tip}
+              </button>
+            ))}
+            <div className="sidebar-section">Catalogue</div>
+            {[TABS[8],TABS[9]].map(t=>(
+              <button key={t.id} className={`sidebar-item${tab===t.id?' on':''}`} onClick={()=>setTab(t.id)}>
+                <i className={`ti ${t.icon}`} aria-hidden="true"/>
+                {t.tip}
+              </button>
+            ))}
+          </nav>
+          <div className="sidebar-footer">
+            <a href="/dashboard" className="btn btn-white btn-sm" style={{flex:1,textAlign:'center',textDecoration:'none',display:'flex',alignItems:'center',justifyContent:'center',gap:6}}>
+              <i className="ti ti-layout-dashboard" aria-hidden="true" style={{fontSize:14}}/>Member portal
+            </a>
+          </div>
+        </aside>
+
+        {/* Rail — tablet */}
         <aside className="rail">
-          <div className="rail-logo">O</div>
+          <div className="rail-logo">A</div>
           <nav className="rail-nav">
             {TABS.map(t => (
               <button key={t.id} className={`rail-item${tab===t.id?' on':''}`}
@@ -691,8 +729,8 @@ export default function Admin() {
               </div>
 
               {pendingActivations.length > 0 && (
-                <div className="card card-gold card-flush">
-                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--gold-border)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div className="card card-flush">
+                  <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--primary-border)', display: 'flex', alignItems: 'center', gap: 10 }}>
                     <i className="ti ti-alert-circle" style={{ color: 'var(--amber)', fontSize: 16 }} aria-hidden="true" />
                     <span className="section-label">Pending activations — action required</span>
                   </div>
@@ -708,7 +746,7 @@ export default function Admin() {
                             <td style={{ color: 'var(--text-dim)', fontSize: 12 }}>{fmtD(a.created_at)}</td>
                             <td style={{ color: 'var(--amber)', fontWeight: 500 }}>{fmtR(a.amount)}</td>
                             <td>
-                              <button className="btn btn-gold btn-xs" disabled={busy===a.id}
+                              <button className="btn btn-primary btn-xs" disabled={busy===a.id}
                                 onClick={() => approveActivation(a.id, a.member_id)}>
                                 {busy===a.id ? '…' : 'Approve payment'}
                               </button>
@@ -762,7 +800,7 @@ export default function Admin() {
                               ? <span className="pill pill-green">Paid</span>
                               : <div style={{ display:'flex',gap:6,alignItems:'center' }}>
                                   <span className="pill pill-gold">Pending</span>
-                                  <button className="btn btn-gold btn-xs" disabled={busy===act.id} onClick={() => approveActivation(act.id,m.id)}>
+                                  <button className="btn btn-primary btn-xs" disabled={busy===act.id} onClick={() => approveActivation(act.id,m.id)}>
                                     {busy===act.id?'…':'Approve'}
                                   </button>
                                 </div>
@@ -779,7 +817,7 @@ export default function Admin() {
                               </button>
                             )}
                             {m.status==='suspended' && (
-                              <button className="btn btn-gold btn-xs"
+                              <button className="btn btn-primary btn-xs"
                                 onClick={async()=>{await supabase.from('members').update({status:'active'}).eq('id',m.id);flash('Reinstated');load();}}>
                                 Reinstate
                               </button>
@@ -856,7 +894,7 @@ export default function Admin() {
                         <td>
                           {o.status==='pending'&&(
                             <div style={{ display:'flex',gap:6 }}>
-                              <button className="btn btn-gold btn-xs" disabled={busy===o.id}
+                              <button className="btn btn-primary btn-xs" disabled={busy===o.id}
                                 onClick={async()=>{setBusy(o.id);await supabase.from('retail_orders').update({status:'fulfilled'}).eq('id',o.id);flash('Fulfilled');setBusy('');load();}}>
                                 Fulfil
                               </button>
@@ -891,7 +929,7 @@ export default function Admin() {
                           <td style={{ color:'var(--text-dim)',fontSize:12 }}>{fmtD(o.created_at)}</td>
                           <td>
                             {o.status==='pending'&&(
-                              <button className="btn btn-gold btn-xs" disabled={busy===o.id}
+                              <button className="btn btn-primary btn-xs" disabled={busy===o.id}
                                 onClick={async()=>{setBusy(o.id);await supabase.from('package_orders').update({status:'fulfilled'}).eq('id',o.id);flash('Fulfilled');setBusy('');load();}}>
                                 Fulfil
                               </button>
@@ -908,7 +946,7 @@ export default function Admin() {
 
             {/* ── BILLING ── */}
             {tab === 'billing' && <>
-              <div className="card card-gold">
+              <div className="card">
                 <div className="section-label" style={{ marginBottom: 12 }}>Monthly billing run · {new Date().toISOString().slice(0,7)}</div>
                 <div style={{ display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:18 }}>
                   {[['Active members',activeMembers.length],['Pool total',fmtR(poolTotal)],['Rep share 30%',fmtR(poolTotal*0.3)],['OHMI retention 70%',fmtR(poolTotal*0.7)],['Foundation est.',fmtR(activeMembers.length*2*15)],['Period',new Date().toISOString().slice(0,7)]].map(([l,v])=>(
@@ -918,7 +956,7 @@ export default function Admin() {
                     </div>
                   ))}
                 </div>
-                <button className="btn btn-gold" disabled={busy==='billing'} onClick={runBilling}>
+                <button className="btn btn-primary" disabled={busy==='billing'} onClick={runBilling}>
                   {busy==='billing' ? 'Running billing…' : `Run billing · ${new Date().toISOString().slice(0,7)}`}
                 </button>
                 <p style={{ fontSize:11,color:'var(--text-dim)',marginTop:10,lineHeight:1.6 }}>
@@ -1015,7 +1053,7 @@ export default function Admin() {
                   <div key={l} className="metric"><div className={`metric-val ${c}`}>{v}</div><div className="metric-label">{l}</div></div>
                 ))}
               </div>
-              <div className="card" style={{ borderLeft:'3px solid var(--gold)',paddingLeft:20 }}>
+              <div className="card" style={{ borderLeft:'3px solid var(--amber)',paddingLeft:20 }}>
                 <div style={{ fontFamily:'var(--display)',fontSize:20,color:'var(--amber)',marginBottom:8 }}>Every kilogram feeds a child in Bitou.</div>
                 <p style={{ fontSize:13,color:'var(--text-muted)',lineHeight:1.8 }}>
                   R15 per kilogram is a fixed structural cost — not a discretionary donation. Allocated automatically on every billing run and tracked here for full transparency.
