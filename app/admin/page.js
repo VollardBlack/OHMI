@@ -148,7 +148,7 @@ function ProfitCalc() {
             <div style={{padding:'10px 14px',background:'var(--surface-1)',borderRadius:'var(--r-sm)',border:'1px solid var(--border)',marginTop:6}}>
               <div style={{fontSize:11,fontWeight:700,color:'var(--text-muted)',marginBottom:8,letterSpacing:'0.08em',textTransform:'uppercase'}}>Calculated COGS per 1kg bag</div>
               {[
-                [`Green beans (R${(RETAIL[0]?.greenKg||153.5).toFixed(2)} × ${c.weightFactor})`, `R${(RETAIL[0]?.greenKg||153.5 * c.weightFactor).toFixed(2)}`],
+                [`Green beans (R${(RETAIL[0]?.greenKg||153.5).toFixed(2)} × ${c.weightFactor})`, `R${((RETAIL[0]?.greenKg||153.5) * c.weightFactor).toFixed(2)}`],
                 ['Roasting', `R${c.roasting.toFixed(2)}`],
                 ['Bag', `R${c.bag.toFixed(2)}`],
                 ['Label', `R${c.label.toFixed(2)}`],
@@ -659,6 +659,10 @@ export default function Admin() {
   const [toast, setToast] = useState('');
   const [travelBookings, setTravelBookings] = useState([]);
   const [travelRequests, setTravelRequests] = useState([]);
+  const [notifs, setNotifs] = useState([]);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const [welcomeOrders, setWelcomeOrders] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [products, setProducts] = useState([]);
   const [stockMovements, setStockMovements] = useState([]);
   const [productTab, setProductTab] = useState('list'); // list | form | stock
@@ -671,7 +675,7 @@ export default function Admin() {
   const flash = m => { setToast(m); setTimeout(() => setToast(''), 3000); };
 
   const load = useCallback(async () => {
-    const [m, n, o, s, a, l, f, b, p, po, tb, pr, sm, tr] = await Promise.all([
+    const [m, n, o, s, a, l, f, b, p, po, tb, pr, sm, tr, notifData, wo, inv] = await Promise.all([
       supabase.from('members').select('*').order('created_at', { ascending: false }),
       supabase.from('tree_view').select('*'),
       supabase.from('retail_orders').select('*').order('created_at', { ascending: false }),
@@ -701,6 +705,9 @@ export default function Admin() {
     setProducts(pr.data||[]);
     setStockMovements(sm.data||[]);
     setTravelRequests(tr.data||[]);
+    setNotifs(notifData.data||[]);
+    setWelcomeOrders(wo.data||[]);
+    setInvoices(inv.data||[]);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -792,7 +799,7 @@ export default function Admin() {
               </button>
             ))}
             <div className="sidebar-section">Catalogue</div>
-            {[TABS[8],TABS[9]].map(t=>(
+            {[TABS[8],TABS[9],TABS[10],TABS[11]].map(t=>(
               <button key={t.id} className={`sidebar-item${tab===t.id?' on':''}`} onClick={()=>setTab(t.id)}>
                 <i className={`ti ${t.icon}`} aria-hidden="true"/>
                 {t.tip}
@@ -1326,6 +1333,99 @@ export default function Admin() {
               </div>
             </>}
 
+
+            {/* ── WELCOME ORDERS ── */}
+            {tab==='welcome'&&<>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div>
+                  <div className="section-title">Welcome Pack Orders</div>
+                  <div style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>{welcomeOrders.length} total · {welcomeOrders.filter(o=>o.status==='pending').length} pending</div>
+                </div>
+              </div>
+              <div className="card card-flush">
+                <table className="data-table">
+                  <thead><tr><th>Invoice</th><th>Member</th><th>Pack</th><th>Coffee Choices</th><th>Amount</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {welcomeOrders.length===0&&<tr><td colSpan="7" style={{textAlign:'center',padding:32,color:'var(--text-muted)'}}>No welcome pack orders yet</td></tr>}
+                    {welcomeOrders.map(o=>{
+                      const m=members.find(x=>x.id===o.member_id);
+                      return(
+                        <tr key={o.id}>
+                          <td style={{fontFamily:'monospace',fontSize:11,color:'var(--primary)',fontWeight:700}}>{o.invoice_number}</td>
+                          <td>
+                            <div style={{fontWeight:600,fontSize:13}}>{m?.full_name||'?'}</div>
+                            <div style={{fontSize:11,color:'var(--text-muted)'}}>{m?.email}</div>
+                          </td>
+                          <td style={{fontWeight:600}}>{o.pack_name}</td>
+                          <td style={{fontSize:11,color:'var(--text-muted)',maxWidth:180}}>
+                            {o.coffee_choices?JSON.parse(o.coffee_choices||'[]').join(', '):'Empire (all origins)'}
+                          </td>
+                          <td style={{fontWeight:700,color:'var(--text-h)'}}>{fmtR(o.pack_price)}</td>
+                          <td><span className={`pill pill-${o.status==='pending'?'amber':o.status==='paid'?'blue':o.status==='shipped'?'primary':o.status==='delivered'?'green':'red'}`}>{o.status}</span></td>
+                          <td>
+                            <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+                              {o.status==='pending'&&<button className="btn btn-xs" style={{background:'var(--blue-bg)',color:'#60A5FA',border:'1px solid rgba(59,130,246,0.2)'}}
+                                onClick={async()=>{await supabase.from('welcome_pack_orders').update({status:'paid',updated_at:new Date().toISOString()}).eq('id',o.id);await supabase.from('invoices').update({status:'paid',paid_at:new Date().toISOString()}).eq('invoice_number',o.invoice_number);flash('Marked as paid');loadData();}}>
+                                Mark Paid
+                              </button>}
+                              {o.status==='paid'&&<button className="btn btn-xs" style={{background:'var(--primary-bg)',color:'var(--primary)',border:'1px solid var(--primary-border)'}}
+                                onClick={async()=>{await supabase.from('welcome_pack_orders').update({status:'shipped',updated_at:new Date().toISOString()}).eq('id',o.id);flash('Marked as shipped');loadData();}}>
+                                Mark Shipped
+                              </button>}
+                              {o.status==='shipped'&&<button className="btn btn-xs" style={{background:'var(--green-bg)',color:'var(--green-text)',border:'1px solid rgba(34,197,94,0.2)'}}
+                                onClick={async()=>{await supabase.from('welcome_pack_orders').update({status:'delivered',updated_at:new Date().toISOString()}).eq('id',o.id);await supabase.from('members').update({status:'active'}).eq('id',o.member_id);flash('Delivered + member activated');loadData();}}>
+                                Delivered ✓
+                              </button>}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>}
+
+            {/* ── INVOICES ── */}
+            {tab==='invoices'&&<>
+              <div className="section-title" style={{marginBottom:4}}>Invoices</div>
+              <div style={{fontSize:13,color:'var(--text-muted)',marginBottom:20}}>{invoices.length} total · {invoices.filter(i=>i.status==='unpaid').length} unpaid</div>
+              <div className="card card-flush">
+                <table className="data-table">
+                  <thead><tr><th>Invoice #</th><th>Member</th><th>Type</th><th>Amount</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {invoices.length===0&&<tr><td colSpan="7" style={{textAlign:'center',padding:32,color:'var(--text-muted)'}}>No invoices yet</td></tr>}
+                    {invoices.map(inv=>{
+                      const m=members.find(x=>x.id===inv.member_id);
+                      const overdue=inv.status==='unpaid'&&inv.due_date&&new Date(inv.due_date)<new Date();
+                      return(
+                        <tr key={inv.id}>
+                          <td style={{fontFamily:'monospace',fontSize:11,color:'var(--primary)',fontWeight:700}}>{inv.invoice_number}</td>
+                          <td>
+                            <div style={{fontWeight:600,fontSize:13}}>{m?.full_name||'?'}</div>
+                            <div style={{fontSize:11,color:'var(--text-muted)'}}>{m?.email}</div>
+                          </td>
+                          <td><span className="pill pill-grey" style={{fontSize:9}}>{inv.invoice_type?.replace('_',' ')}</span></td>
+                          <td style={{fontWeight:700,color:'var(--text-h)'}}>{fmtR(inv.total)}</td>
+                          <td style={{fontSize:12,color:overdue?'var(--red-text)':'var(--text-muted)',fontWeight:overdue?700:400}}>
+                            {inv.due_date?fmtD(inv.due_date):'—'}
+                            {overdue&&<div style={{fontSize:9,color:'var(--red-text)',fontWeight:700}}>OVERDUE</div>}
+                          </td>
+                          <td><span className={`pill pill-${inv.status==='paid'?'green':inv.status==='unpaid'?'amber':'red'}`}>{inv.status}</span></td>
+                          <td>
+                            {inv.status==='unpaid'&&<button className="btn btn-xs btn-primary"
+                              onClick={async()=>{await supabase.from('invoices').update({status:'paid',paid_at:new Date().toISOString()}).eq('id',inv.id);flash('Invoice marked paid');loadData();}}>
+                              Mark Paid
+                            </button>}
+                            {inv.status==='paid'&&<span style={{fontSize:11,color:'var(--green-text)',fontWeight:600}}>✓ Paid {inv.paid_at?fmtD(inv.paid_at):''}</span>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>}
 
             {/* ── PRODUCTS ── */}
             {tab==='products'&&<>
