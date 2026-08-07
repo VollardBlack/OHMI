@@ -101,6 +101,15 @@ export default function Dashboard() {
   const [pkgOrders,setPkgOrders] = useState([]);
   const [shopProducts,setShopProducts] = useState([]);
   const [cart,setCart] = useState({});
+  const [grind,setGrind] = useState({});
+  const [shipping,setShipping] = useState({provider:'The Courier Guy',zone:'National (SA)',fee:95,label:'Courier Guy National (2-5 days)'});
+  const [shippingRates] = useState([
+    {provider:'Pudo',zone:'Locker to locker',fee:49,label:'PUDO Locker (cheapest · 2-4 days)'},
+    {provider:'The Courier Guy',zone:'Local (same city)',fee:65,label:'Courier Guy Local (1-2 days)'},
+    {provider:'The Courier Guy',zone:'Regional (SA)',fee:85,label:'Courier Guy Regional (2-3 days)'},
+    {provider:'The Courier Guy',zone:'National (SA)',fee:95,label:'Courier Guy National (3-5 days)'},
+    {provider:'Wiara',zone:'Cape Town local',fee:0,label:'Cape Town local delivery (FREE — Wed/Thu/Fri)'},
+  ]);
   const [checkoutStep,setCheckoutStep] = useState('browse');
   const [busy,setBusy] = useState('');
   const [toast,setToast] = useState('');
@@ -151,6 +160,8 @@ export default function Dashboard() {
   const cartTotal=cartItems.reduce((s,i)=>s+unitPrice(i)*i.qty,0);
   const cartPool=cartItems.reduce((s,i)=>s+Number(i.pool_contribution||0)*i.qty,0);
   const cartQty=cartItems.reduce((s,i)=>s+i.qty,0);
+  const grindTotal=cartItems.reduce((s,i)=>s+(grind[i.id]?3*i.qty:0),0);
+  const orderTotal=cartTotal+grindTotal+shipping.fee;
   const addCart=(id,d)=>setCart(c=>({...c,[id]:Math.max(0,(c[id]||0)+d)}));
   const myOrders=pkgOrders.filter(o=>me&&o.member_id===me.id);
   const refLink=me&&typeof window!=='undefined'?`${window.location.origin}/join?ref=${me.id}`:'';
@@ -159,7 +170,16 @@ export default function Dashboard() {
     if(!me||!cartItems.length)return;
     setBusy('order');
     const period=new Date().toISOString().slice(0,7)+'-01';
-    await supabase.from('package_orders').insert(cartItems.map(i=>({member_id:me.id,package_id:i.id,quantity:i.qty,total:(me?.status==='active'?Number(i.price_member||i.price):Number(i.price_retail||i.price))*i.qty,pool_contribution:Number(i.pool_contribution||0)*i.qty,status:'pending',billing_period:period})));
+    const ref=me?.id?.slice(0,8)?.toUpperCase()+'-SHOP';
+    await supabase.from('package_orders').insert(cartItems.map(i=>({
+      member_id:me.id,package_id:i.id,quantity:i.qty,
+      total:(me?.status==='active'?Number(i.price_member||i.price):Number(i.price_retail||i.price))*i.qty,
+      pool_contribution:Number(i.pool_contribution||0)*i.qty,
+      shipping_fee:shipping.fee,shipping_address:shipping.label,
+      delivery_method:shipping.provider,
+      grind_option:!!grind[i.id],grind_fee:grind[i.id]?3*i.qty:0,
+      status:'pending',billing_period:period
+    })));
     setCart({});setBusy('');setCheckoutStep('done');
     const {data}=await supabase.from('package_orders').select('*').order('created_at',{ascending:false});
     setPkgOrders(data||[]);
@@ -396,7 +416,8 @@ export default function Dashboard() {
                     <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',color:'rgba(255,255,255,0.65)',marginBottom:8}}>Order confirmed</div>
                     <div style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:8,letterSpacing:'-0.02em'}}>We roast on Tuesdays.</div>
                     <div style={{fontSize:13,color:'rgba(255,255,255,0.7)',marginBottom:6}}>Your coffee will be freshly roasted and dispatched within 3 business days.</div>
-                    <div style={{fontFamily:'monospace',fontSize:13,background:'rgba(0,0,0,0.2)',color:'rgba(255,255,255,0.9)',padding:'8px 16px',borderRadius:'var(--r-sm)',display:'inline-block',marginBottom:20}}>Ref: {me?.id?.slice(0,8)?.toUpperCase()}-SHOP</div>
+                    <div style={{fontFamily:'monospace',fontSize:13,background:'rgba(0,0,0,0.2)',color:'rgba(255,255,255,0.9)',padding:'8px 16px',borderRadius:'var(--r-sm)',display:'inline-block',marginBottom:12}}>Ref: {me?.id?.slice(0,8)?.toUpperCase()}-SHOP</div>
+                    <div style={{fontSize:13,color:'rgba(255,255,255,0.8)',marginBottom:20}}>Total: <strong>{Rz(orderTotal)}</strong> incl. {Rz(shipping.fee===0?0:shipping.fee)} shipping{grindTotal>0?` + ${Rz(grindTotal)} grind`:''}</div>
                     <div style={{background:'rgba(0,0,0,0.15)',borderRadius:'var(--r-sm)',padding:'12px 16px',marginBottom:20,textAlign:'left'}}>
                       <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,0.6)',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:6}}>EFT Payment Details</div>
                       <div style={{fontSize:13,color:'#fff',lineHeight:1.8}}>
@@ -489,6 +510,31 @@ export default function Dashboard() {
                           ✓ Member pricing applied — saving {Rz(cartItems.reduce((s,i)=>(s+(Number(i.price_retail)-Number(i.price_member))*i.qty),0))}
                         </div>
                       )}
+                      {/* Shipping selector */}
+                      <div style={{marginBottom:12}}>
+                        <div className="section-label" style={{marginBottom:8}}>Delivery method</div>
+                        {shippingRates.map(r=>(
+                          <div key={r.label} onClick={()=>setShipping(r)}
+                            style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',marginBottom:6,background:shipping.label===r.label?'var(--primary-bg)':'var(--surface-1)',border:`1.5px solid ${shipping.label===r.label?'var(--primary)':'var(--border)'}`,borderRadius:'var(--r-sm)',cursor:'pointer'}}>
+                            <div style={{width:16,height:16,borderRadius:'50%',border:`2px solid ${shipping.label===r.label?'var(--primary)':'var(--border-md)'}`,background:shipping.label===r.label?'var(--primary)':'transparent',flexShrink:0}}/>
+                            <span style={{fontSize:13,flex:1,color:'var(--text-body)'}}>{r.label}</span>
+                            <span style={{fontWeight:700,color:r.fee===0?'var(--green-text)':'var(--text-h)',fontSize:13}}>{r.fee===0?'FREE':Rz(r.fee)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Grind options per item */}
+                      <div style={{marginBottom:14}}>
+                        <div className="section-label" style={{marginBottom:8}}>Grind options (+R3/kg)</div>
+                        {cartItems.map(i=>(
+                          <div key={i.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid var(--border)'}}>
+                            <span style={{fontSize:13,color:'var(--text-sub)'}}>{i.name}</span>
+                            <div style={{display:'flex',gap:8}}>
+                              <button onClick={()=>setGrind(g=>({...g,[i.id]:false}))} className={!grind[i.id]?'btn btn-primary btn-xs':'btn btn-ghost btn-xs'} style={{borderRadius:'var(--r-full)'}}>Whole beans</button>
+                              <button onClick={()=>setGrind(g=>({...g,[i.id]:true}))} className={grind[i.id]?'btn btn-primary btn-xs':'btn btn-ghost btn-xs'} style={{borderRadius:'var(--r-full)'}}>Ground +R3</button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                       <button className="btn btn-primary btn-full" disabled={busy==='order'||!cartItems.length} onClick={placeOrder} style={{fontSize:14,padding:'13px'}}>
                         {busy==='order'?'Placing order…':'Place order'}
                       </button>
