@@ -1,110 +1,189 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 export default function Login() {
-  const [email, setEmail]     = useState('');
-  const [pass, setPass]       = useState('');
-  const [busy, setBusy]       = useState(false);
-  const [err, setErr]         = useState('');
+  const router = useRouter();
+  const [mode, setMode] = useState('login');
+  const [form, setForm] = useState({ email: '', password: '' });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const set = (k,v) => setForm(f=>({...f,[k]:v}));
 
-  async function login(e) {
+  async function handleLogin(e) {
     e.preventDefault();
-    setBusy(true); setErr('');
-    try {
-      const { data: admin } = await supabase.from('members').select('id,status,role').eq('email', email.trim()).eq('role', 'admin').single();
-      if (admin) {
-        localStorage.setItem('ohmi_member_id', admin.id);
-        localStorage.setItem('ohmi_role', 'admin');
-        window.location.href = '/admin';
-        return;
-      }
-      const { data: member } = await supabase.from('members').select('id,status').eq('email', email.trim()).single();
-      if (member) {
-        localStorage.setItem('ohmi_member_id', member.id);
-        localStorage.setItem('ohmi_role', 'member');
-        window.location.href = '/dashboard';
-        return;
-      }
-      setErr('No account found with that email.');
-    } catch { setErr('Something went wrong. Please try again.'); }
-    finally { setBusy(false); }
+    if (!form.email||!form.password){setError('Please enter your email and password');return;}
+    setBusy(true);setError('');
+    const {data:member,error:mErr}=await supabase
+      .from('members').select('*').eq('email',form.email.toLowerCase().trim()).maybeSingle();
+    if(mErr||!member){setError('No account found with that email address.');setBusy(false);return;}
+    if(member.status==='suspended'){setError('Your account has been suspended. Contact support.');setBusy(false);return;}
+    if(typeof window!=='undefined'){
+      localStorage.setItem('ohmi_member_id',member.id);
+      localStorage.setItem('ohmi_member_email',member.email);
+      localStorage.setItem('ohmi_is_admin',member.email==='brandon@ohmicoffee.co.za'?'true':'false');
+    }
+    setBusy(false);
+    if(member.email==='brandon@ohmicoffee.co.za')router.push('/admin');
+    else router.push('/dashboard');
   }
 
+  async function handleForgot(e) {
+    e.preventDefault();
+    if(!form.email){setError('Enter your email address');return;}
+    setBusy(true);setError('');
+    await new Promise(r=>setTimeout(r,800));
+    setBusy(false);
+    setSuccess('If an account exists for that email, a reset link has been sent.');
+  }
+
+  const inputStyle = {
+    width:'100%',padding:'12px 14px',
+    background:'#F9FAFB',border:'1.5px solid #E5E7EB',
+    borderRadius:10,fontSize:16,outline:'none',color:'#111827',
+    boxShadow:'0 1px 2px rgba(0,0,0,0.04)',
+    fontFamily:"'Inter',-apple-system,sans-serif",
+    transition:'border-color 0.15s',
+  };
+
   return (
-    <>
-      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"/>
-      <div className="login-hero">
+    <div style={{
+      minHeight:'100vh',position:'relative',
+      display:'flex',alignItems:'flex-end',justifyContent:'center',
+      fontFamily:"'Inter',-apple-system,sans-serif",
+    }}>
+      {/* Hero background */}
+      <div style={{
+        position:'fixed',inset:0,zIndex:0,
+        backgroundImage:'url(/ohmi-hero.png)',
+        backgroundSize:'cover',backgroundPosition:'center top',
+        backgroundRepeat:'no-repeat',
+      }}/>
+      {/* Gradient overlay */}
+      <div style={{
+        position:'fixed',inset:0,zIndex:1,
+        background:'linear-gradient(to bottom,rgba(0,0,0,0.02) 0%,rgba(0,0,0,0.1) 35%,rgba(0,0,0,0.65) 65%,rgba(0,0,0,0.88) 100%)',
+      }}/>
 
-        {/* Ambient background circles */}
-        <div style={{position:'absolute',width:600,height:600,borderRadius:'50%',background:'radial-gradient(circle,rgba(201,151,58,0.06) 0%,transparent 70%)',top:-200,right:-100,pointerEvents:'none'}}/>
-        <div style={{position:'absolute',width:400,height:400,borderRadius:'50%',background:'radial-gradient(circle,rgba(201,151,58,0.04) 0%,transparent 70%)',bottom:-100,left:-100,pointerEvents:'none'}}/>
+      {/* Login panel */}
+      <div style={{position:'relative',zIndex:2,width:'100%',maxWidth:420,padding:'0 20px 44px'}}>
 
-        <div className="login-card">
-          {/* Logo */}
-          <div style={{textAlign:'center',marginBottom:36}}>
-            <div style={{fontFamily:'var(--display)',fontSize:36,fontWeight:700,color:'var(--cream)',letterSpacing:'0.02em',marginBottom:4}}>
-              OHMI<span style={{color:'var(--gold)'}}>.</span>
-            </div>
-            <div style={{fontSize:9,fontWeight:700,letterSpacing:'0.24em',textTransform:'uppercase',color:'var(--gold)'}}>
-              Coffee · Lifestyle · Legacy
-            </div>
-            <div style={{width:40,height:1,background:'var(--gold-border)',margin:'16px auto 0'}}/>
-          </div>
-
-          <div style={{marginBottom:28,textAlign:'center'}}>
-            <div style={{fontSize:20,fontWeight:700,color:'var(--cream)',marginBottom:6}}>Welcome back</div>
-            <div style={{fontSize:13,color:'var(--cream-muted)'}}>Sign in to your OHMI account</div>
-          </div>
-
-          <form onSubmit={login} style={{display:'flex',flexDirection:'column',gap:14}}>
-            <div className="field" style={{marginBottom:0}}>
-              <label className="field-label">Email address</label>
-              <input className="field-input" type="email" value={email} onChange={e=>setEmail(e.target.value)}
-                placeholder="you@email.com" required autoComplete="email"/>
-            </div>
-            <div className="field" style={{marginBottom:0}}>
-              <label className="field-label">Password</label>
-              <input className="field-input" type="password" value={pass} onChange={e=>setPass(e.target.value)}
-                placeholder="••••••••" required/>
-            </div>
-
-            {err && (
-              <div style={{padding:'10px 14px',background:'var(--red-bg)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:'var(--r-sm)',fontSize:12,color:'var(--red-text)',display:'flex',alignItems:'center',gap:8}}>
-                <i className="ti ti-alert-circle" style={{fontSize:14,flexShrink:0}}/>
-                {err}
-              </div>
-            )}
-
-            <button className="btn btn-primary btn-full btn-lg" type="submit" disabled={busy} style={{marginTop:6,borderRadius:'var(--r-full)',letterSpacing:'0.08em',textTransform:'uppercase'}}>
-              {busy ? 'Signing in…' : 'Sign in'}
-            </button>
-          </form>
-
-          {/* Demo access */}
-          <div style={{marginTop:24,padding:'16px',background:'var(--gold-bg)',border:'1px solid var(--gold-border)',borderRadius:'var(--r-sm)'}}>
-            <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:'var(--gold)',marginBottom:8}}>Demo access</div>
-            <div style={{display:'flex',flexDirection:'column',gap:6}}>
-              {[
-                ['Member portal','brandon@ohmicoffee.co.za','/dashboard'],
-                ['Admin panel','admin@ohmicoffee.co.za','/admin'],
-              ].map(([label,em,path])=>(
-                <button key={label} onClick={()=>{
-                  localStorage.setItem('ohmi_role', path==='/admin'?'admin':'member');
-                  window.location.href = path;
-                }} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'8px 12px',background:'rgba(201,151,58,0.06)',border:'1px solid var(--gold-border)',borderRadius:'var(--r-xs)',cursor:'pointer',fontFamily:'inherit',width:'100%'}}>
-                  <span style={{fontSize:12,fontWeight:600,color:'var(--cream)'}}>{label}</span>
-                  <span style={{fontSize:10,color:'var(--gold)',fontWeight:700,letterSpacing:'0.04em'}}>Enter →</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div style={{marginTop:20,textAlign:'center',fontSize:11,color:'var(--cream-dim)'}}>
-            New to OHMI? <a href="/join" style={{color:'var(--gold)',fontWeight:600}}>Join the network →</a>
+        {/* Tagline above card */}
+        <div style={{textAlign:'center',marginBottom:24}}>
+          <div style={{
+            fontSize:11,fontWeight:700,letterSpacing:'0.28em',
+            textTransform:'uppercase',color:'#C8913A',
+          }}>
+            COFFEE WILL TAKE YOU THERE
           </div>
         </div>
+
+        {/* Card */}
+        <div style={{
+          background:'rgba(255,255,255,0.97)',
+          borderRadius:20,padding:'28px 28px 24px',
+          boxShadow:'0 24px 64px rgba(0,0,0,0.5)',
+          backdropFilter:'blur(8px)',
+        }}>
+          {mode==='login'?<>
+            <h1 style={{fontSize:22,fontWeight:800,color:'#111827',letterSpacing:'-0.02em',marginBottom:3}}>Welcome back</h1>
+            <p style={{fontSize:13,color:'#6B7280',marginBottom:22}}>Sign in to your OHMI member portal</p>
+
+            {error&&<div style={{padding:'10px 14px',background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:8,fontSize:12,color:'#DC2626',marginBottom:16,fontWeight:500}}>{error}</div>}
+
+            <form onSubmit={handleLogin}>
+              <div style={{marginBottom:14}}>
+                <label style={{fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#6B7280',display:'block',marginBottom:6}}>Email</label>
+                <input type="email" autoComplete="email" required value={form.email}
+                  onChange={e=>set('email',e.target.value)} placeholder="you@email.com"
+                  style={inputStyle}
+                  onFocus={e=>e.target.style.borderColor='#6366F1'}
+                  onBlur={e=>e.target.style.borderColor='#E5E7EB'}/>
+              </div>
+              <div style={{marginBottom:6}}>
+                <label style={{fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#6B7280',display:'block',marginBottom:6}}>Password</label>
+                <input type="password" autoComplete="current-password" required value={form.password}
+                  onChange={e=>set('password',e.target.value)} placeholder="••••••••"
+                  style={inputStyle}
+                  onFocus={e=>e.target.style.borderColor='#6366F1'}
+                  onBlur={e=>e.target.style.borderColor='#E5E7EB'}/>
+              </div>
+              <div style={{textAlign:'right',marginBottom:20}}>
+                <button type="button" onClick={()=>{setMode('forgot');setError('');}}
+                  style={{background:'none',border:'none',fontSize:12,color:'#6366F1',fontWeight:600,cursor:'pointer',fontFamily:'inherit',padding:0}}>
+                  Forgot password?
+                </button>
+              </div>
+              <button type="submit" disabled={busy} style={{
+                width:'100%',padding:'13px',
+                background:'linear-gradient(135deg,#6366F1 0%,#0EA5E9 100%)',
+                color:'#fff',border:'none',borderRadius:10,
+                fontSize:14,fontWeight:700,
+                cursor:busy?'not-allowed':'pointer',
+                opacity:busy?0.7:1,letterSpacing:'0.02em',
+                boxShadow:'0 4px 16px rgba(99,102,241,0.35)',
+                transition:'opacity 0.15s,transform 0.15s',
+                fontFamily:'inherit',
+              }}
+                onMouseEnter={e=>{if(!busy)e.currentTarget.style.transform='translateY(-1px)';}}
+                onMouseLeave={e=>e.currentTarget.style.transform=''}>
+                {busy?'Signing in…':'Sign in'}
+              </button>
+            </form>
+
+            <div style={{borderTop:'1px solid #F3F4F6',marginTop:22,paddingTop:18,textAlign:'center'}}>
+              <p style={{fontSize:12,color:'#9CA3AF',marginBottom:12}}>Not a member yet?</p>
+              <a href="/join" style={{
+                display:'inline-block',padding:'11px 22px',
+                background:'#F3F4F6',color:'#374151',
+                borderRadius:10,fontSize:13,fontWeight:600,
+                textDecoration:'none',transition:'background 0.15s',
+              }}
+                onMouseEnter={e=>e.currentTarget.style.background='#E5E7EB'}
+                onMouseLeave={e=>e.currentTarget.style.background='#F3F4F6'}>
+                Join OHMI — R2,500 activation
+              </a>
+            </div>
+          </>:<>
+            <button onClick={()=>{setMode('login');setError('');setSuccess('');}}
+              style={{background:'none',border:'none',fontSize:13,color:'#6B7280',cursor:'pointer',marginBottom:16,display:'flex',alignItems:'center',gap:6,fontFamily:'inherit',padding:0}}>
+              ← Back to sign in
+            </button>
+            <h2 style={{fontSize:20,fontWeight:800,color:'#111827',marginBottom:6}}>Reset password</h2>
+            <p style={{fontSize:13,color:'#6B7280',marginBottom:20}}>Enter your email and we'll send a reset link.</p>
+            {error&&<div style={{padding:'10px 14px',background:'rgba(239,68,68,0.08)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:8,fontSize:12,color:'#DC2626',marginBottom:14}}>{error}</div>}
+            {success&&<div style={{padding:'10px 14px',background:'rgba(16,185,129,0.08)',border:'1px solid rgba(16,185,129,0.2)',borderRadius:8,fontSize:12,color:'#059669',marginBottom:14,fontWeight:500}}>{success}</div>}
+            {!success&&(
+              <form onSubmit={handleForgot}>
+                <div style={{marginBottom:16}}>
+                  <label style={{fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#6B7280',display:'block',marginBottom:6}}>Email</label>
+                  <input type="email" required value={form.email} onChange={e=>set('email',e.target.value)} placeholder="you@email.com"
+                    style={inputStyle}
+                    onFocus={e=>e.target.style.borderColor='#6366F1'}
+                    onBlur={e=>e.target.style.borderColor='#E5E7EB'}/>
+                </div>
+                <button type="submit" disabled={busy} style={{
+                  width:'100%',padding:13,
+                  background:'linear-gradient(135deg,#6366F1 0%,#0EA5E9 100%)',
+                  color:'#fff',border:'none',borderRadius:10,
+                  fontSize:14,fontWeight:700,
+                  cursor:busy?'not-allowed':'pointer',
+                  opacity:busy?0.7:1,fontFamily:'inherit',
+                }}>
+                  {busy?'Sending…':'Send reset link'}
+                </button>
+              </form>
+            )}
+            {success&&<button onClick={()=>setMode('login')} style={{width:'100%',padding:13,background:'#F3F4F6',color:'#374151',border:'none',borderRadius:10,fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:'inherit',marginTop:4}}>Back to sign in</button>}
+          </>}
+        </div>
+
+        <div style={{textAlign:'center',marginTop:18,fontSize:10,color:'rgba(255,255,255,0.38)',letterSpacing:'0.08em'}}>
+          © 2026 OHMI COFFEE CO. (PTY) LTD · WESTERN CAPE
+        </div>
       </div>
-    </>
+    </div>
   );
 }
