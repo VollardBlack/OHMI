@@ -351,9 +351,9 @@ export default function Admin() {
                 {[
                   ['Total members', members.length, ''],
                   ['Active', activeMembers.length, 'green'],
-                  ['Pool this month', fmtR(poolTotal), 'gold'],
+                  ['Pool this month', fmtR(poolTotal), 'teal'],
                   ['Rep share 30%', fmtR(poolTotal*0.3), ''],
-                  ['OHMI retention 70%', fmtR(poolTotal*0.7), ''],
+                  ['OHMI retention 70%', fmtR(poolTotal*0.7), 'primary'],
                   ['Pending activations', pendingActivations.length, pendingActivations.length>0?'gold':''],
                   ['Pending orders', pendingOrders.length, pendingOrders.length>0?'gold':''],
                   ['Retail revenue', fmtR(totalRevenue), 'gold'],
@@ -396,21 +396,19 @@ export default function Admin() {
                 </div>
               )}
 
-              <div className="card">
-                <div className="section-label" style={{ marginBottom: 14 }}>Pool breakdown · {new Date().toISOString().slice(0,7)}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-                  {[
-                    ['Active × R500', fmtR(poolTotal), 'Total pool'],
-                    ['30% to reps', fmtR(poolTotal*0.3), 'Commission pool'],
-                    ['70% OHMI', fmtR(poolTotal*0.7), 'Ops + Foundation'],
-                  ].map(([l,v,s]) => (
-                    <div key={l} style={{ padding: '14px 16px', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 'var(--r-md)' }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-dim)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 6 }}>{l}</div>
-                      <div style={{ fontFamily: 'var(--display)', fontSize: 24, color: 'var(--amber)', fontWeight: 600 }}>{v}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 3 }}>{s}</div>
-                    </div>
-                  ))}
-                </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
+                {[
+                  ['Active × R500', fmtR(poolTotal), 'Total pool','linear-gradient(135deg,#6366F1,#0EA5E9)'],
+                  ['30% to reps', fmtR(poolTotal*0.3), 'Commission pool','linear-gradient(135deg,#10B981,#0EA5E9)'],
+                  ['70% OHMI', fmtR(poolTotal*0.7), 'Ops + Foundation','linear-gradient(135deg,#8B5CF6,#6366F1)'],
+                ].map(([l,v,s,bg]) => (
+                  <div key={l} style={{padding:'18px 16px',background:bg,borderRadius:'var(--r)',boxShadow:'var(--shadow-md)',position:'relative',overflow:'hidden'}}>
+                    <div style={{position:'absolute',width:80,height:80,borderRadius:'50%',background:'rgba(255,255,255,0.08)',top:-20,right:-20}}/>
+                    <div style={{fontSize:10,color:'rgba(255,255,255,0.65)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:8,fontWeight:700}}>{l}</div>
+                    <div style={{fontSize:26,color:'#fff',fontWeight:800,letterSpacing:'-0.02em',lineHeight:1}}>{v}</div>
+                    <div style={{fontSize:11,color:'rgba(255,255,255,0.6)',marginTop:5}}>{s}</div>
+                  </div>
+                ))}
               </div>
             </>}
 
