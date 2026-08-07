@@ -310,6 +310,14 @@ export default function Admin() {
   return (
     <>
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
+      {/* Mobile topbar */}
+      <div className="mobile-topbar">
+        <span className="mobile-topbar-logo">OHMI Admin</span>
+        <div style={{ display:'flex', gap:8 }}>
+          <span className="topbar-badge topbar-badge-gold" style={{ fontSize:9 }}>{activeMembers.length} active</span>
+        </div>
+      </div>
+
       <div className="app-shell">
 
         {/* Rail */}
@@ -729,6 +737,31 @@ export default function Admin() {
           </div>
         </div>
       </div>
+      {/* Mobile bottom nav */}
+      <nav className="mobile-nav">
+        <div className="mobile-nav-inner">
+          {[
+            { id:'dashboard', icon:'ti-layout-dashboard', label:'Home' },
+            { id:'members',   icon:'ti-users',            label:'Members' },
+            { id:'network',   icon:'ti-binary-tree-2',    label:'Tree' },
+            { id:'orders',    icon:'ti-shopping-bag',     label:'Orders' },
+            { id:'billing',   icon:'ti-coin',             label:'Billing' },
+          ].map(t => (
+            <button key={t.id} className={`mobile-nav-item${tab===t.id?' on':''}`}
+              onClick={() => setTab(t.id)} aria-label={t.label}>
+              <i className={`ti ${t.icon}`} aria-hidden="true" />
+              <span>{t.label}</span>
+              {t.id==='members' && pendingActivations.length>0 && <span className="m-badge">{pendingActivations.length}</span>}
+              {t.id==='orders'  && pendingOrders.length>0       && <span className="m-badge" style={{ background:'var(--red)' }}>{pendingOrders.length}</span>}
+            </button>
+          ))}
+          <button className="mobile-nav-item" onClick={() => setTab(tab==='calc'?'dashboard':'calc')} aria-label="More">
+            <i className="ti ti-dots" aria-hidden="true" />
+            <span>More</span>
+          </button>
+        </div>
+      </nav>
+
       {toast && <div className="toast">{toast}</div>}
     </>
   );
