@@ -116,11 +116,12 @@ export default function Dashboard() {
       supabase.from('subscriptions').select('*'),
       supabase.from('packages').select('*').eq('active',true).order('sort_order'),
       supabase.from('package_orders').select('*').order('created_at',{ascending:false}),
-      supabase.from('products').select('*').eq('status','active').order('sort_order'),
       supabase.from('lifestyle_ledger').select('*').order('created_at',{ascending:false}),
+      supabase.from('products').select('*').eq('status','active').order('sort_order'),
     ]);
     setMembers(m.data||[]);setNodes(n.data||[]);setLedger(l.data||[]);
     setPackages(p.data||[]);setPkgOrders(po.data||[]);setLifestyle(ll.data||[]);
+    setShopProducts((pr.data||[]).filter(x=>!x.sku?.includes('BUGISU')));
     const root=(m.data||[]).find(x=>x.email==='brandon@ohmicoffee.co.za')||(m.data||[])[0];
     setMe(root||null);
     setSub((s.data||[]).find(x=>x.member_id===root?.id)||null);
@@ -144,9 +145,10 @@ export default function Dashboard() {
   const ptBal=myLife.filter(l=>['rank_bonus','adjustment'].includes(l.entry_type)).reduce((s,l)=>s+Number(l.points),0)
     -myLife.filter(l=>['redemption','expiry'].includes(l.entry_type)).reduce((s,l)=>s+Number(l.points),0);
 
-  const allShopItems=[...packages,...shopProducts];
-  const cartItems=allShopItems.filter(p=>cart[p.id]>0).map(p=>({...p,qty:cart[p.id]}));
-  const cartTotal=cartItems.reduce((s,i)=>s+(me?.status==='active'?Number(i.price_member||i.price):Number(i.price_retail||i.price))*i.qty,0);
+  const cartItems=shopProducts.filter(p=>cart[p.id]>0).map(p=>({...p,qty:cart[p.id]}));
+  const isMember=me?.status==='active';
+  const unitPrice=p=>isMember?Number(p.price_member||p.price_retail):Number(p.price_retail);
+  const cartTotal=cartItems.reduce((s,i)=>s+unitPrice(i)*i.qty,0);
   const cartPool=cartItems.reduce((s,i)=>s+Number(i.pool_contribution||0)*i.qty,0);
   const cartQty=cartItems.reduce((s,i)=>s+i.qty,0);
   const addCart=(id,d)=>setCart(c=>({...c,[id]:Math.max(0,(c[id]||0)+d)}));
@@ -386,107 +388,245 @@ export default function Dashboard() {
 
             {/* ── SHOP ── */}
             {tab==='shop'&&<>
-              {checkoutStep==='browse'&&<>
-                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end'}}>
-                  <div>
-                    <div className="section-title">Single Origin Coffees</div>
-                    <p style={{fontSize:13,color:'var(--text-muted)',marginTop:2}}>All 1kg · 100% Arabica · Retail R385 · Member R365</p>
-                  </div>
-                  {cartQty>0&&<span className="pill pill-primary">{cartQty} in cart</span>}
-                </div>
-                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:14}}>
-                  {shopProducts.map(p=>{
-                    const qty=cart[p.id]||0;
-                    const price=me?.status==='active'?Number(p.price_member):Number(p.price_retail);
-                    return(
-                      <div key={p.id} className={`pkg-card${qty>0?' selected':''}`} style={{borderRadius:'var(--r)',overflow:'hidden',display:'flex',flexDirection:'column'}}>
-                        {/* Product image */}
-                        <div style={{position:'relative',height:220,overflow:'hidden',background:'#111'}}>
-                          {p.image_url?(
-                            <img src={p.image_url} alt={p.name}
-                              style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 20%',transition:'transform 0.3s'}}
-                              onMouseEnter={e=>e.target.style.transform='scale(1.04)'}
-                              onMouseLeave={e=>e.target.style.transform=''}/>
-                          ):(
-                            <div style={{width:'100%',height:'100%',background:'linear-gradient(135deg,#6366F1,#0EA5E9)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:40}}>☕</div>
-                          )}
-                          {qty>0&&<div style={{position:'absolute',top:10,right:10,width:28,height:28,borderRadius:'50%',background:'var(--primary)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,boxShadow:'0 2px 8px rgba(0,0,0,0.3)'}}>{qty}</div>}
-                          <div style={{position:'absolute',bottom:0,left:0,right:0,background:'linear-gradient(transparent,rgba(0,0,0,0.7))',padding:'24px 12px 10px'}}>
-                            <div style={{fontSize:14,fontWeight:800,color:'#fff',letterSpacing:'-0.01em'}}>{p.name}</div>
-                          </div>
-                        </div>
-                        {/* Info */}
-                        <div style={{padding:'12px 14px',flex:1,display:'flex',flexDirection:'column',gap:8}}>
-                          <p style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.6,flex:1,display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical',overflow:'hidden'}}>{p.description}</p>
-                          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                            <div>
-                              <span style={{fontSize:20,fontWeight:800,color:'var(--text-h)',letterSpacing:'-0.02em'}}>R{price}</span>
-                              {me?.status==='active'&&<span style={{fontSize:10,color:'var(--green-text)',fontWeight:600,marginLeft:5}}>member price</span>}
-                            </div>
-                            {qty>0?(
-                              <div style={{display:'flex',alignItems:'center',gap:8}}>
-                                <button className="qty-btn" onClick={()=>addCart(p.id,-1)}>−</button>
-                                <span className="qty-num">{qty}</span>
-                                <button className="qty-btn" onClick={()=>addCart(p.id,1)}>+</button>
-                              </div>
-                            ):<button className="btn btn-primary btn-xs" onClick={()=>addCart(p.id,1)}>Add</button>}
-                          </div>
-                        </div>
+              {checkoutStep==='done'?(
+                <div style={{maxWidth:500,margin:'0 auto'}}>
+                  <div style={{background:'linear-gradient(135deg,#10B981,#0EA5E9)',borderRadius:'var(--r-lg)',padding:'36px 28px',textAlign:'center',boxShadow:'var(--shadow-lg)',position:'relative',overflow:'hidden'}}>
+                    <div style={{position:'absolute',width:160,height:160,borderRadius:'50%',background:'rgba(255,255,255,0.08)',top:-40,right:-40}}/>
+                    <div style={{fontSize:48,marginBottom:14}}>☕</div>
+                    <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',color:'rgba(255,255,255,0.65)',marginBottom:8}}>Order confirmed</div>
+                    <div style={{fontSize:26,fontWeight:800,color:'#fff',marginBottom:8,letterSpacing:'-0.02em'}}>We roast on Tuesdays.</div>
+                    <div style={{fontSize:13,color:'rgba(255,255,255,0.7)',marginBottom:6}}>Your coffee will be freshly roasted and dispatched within 3 business days.</div>
+                    <div style={{fontFamily:'monospace',fontSize:13,background:'rgba(0,0,0,0.2)',color:'rgba(255,255,255,0.9)',padding:'8px 16px',borderRadius:'var(--r-sm)',display:'inline-block',marginBottom:20}}>Ref: {me?.id?.slice(0,8)?.toUpperCase()}-SHOP</div>
+                    <div style={{background:'rgba(0,0,0,0.15)',borderRadius:'var(--r-sm)',padding:'12px 16px',marginBottom:20,textAlign:'left'}}>
+                      <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,0.6)',letterSpacing:'0.08em',textTransform:'uppercase',marginBottom:6}}>EFT Payment Details</div>
+                      <div style={{fontSize:13,color:'#fff',lineHeight:1.8}}>
+                        <div>Bank: <strong>FNB</strong></div>
+                        <div>Account: <strong>OHMI Coffee Co. (Pty) Ltd</strong></div>
+                        <div>Reference: <strong>{me?.id?.slice(0,8)?.toUpperCase()}-SHOP</strong></div>
                       </div>
-                    );
-                  })}
-                </div>
-                {cartItems.length>0&&(
-                  <div className="cart-bar">
-                    <div className="cart-stat"><span className="cart-stat-label">Total</span><span className="cart-stat-val">{Rz(cartTotal)}</span></div>
-                    <div className="cart-divider"/>
-                    <div className="cart-stat"><span className="cart-stat-label">Pool</span><span className="cart-stat-val">{Rz(cartPool)}</span></div>
-                    <div className="cart-divider"/>
-                    <div className="cart-stat"><span className="cart-stat-label">Items</span><span className="cart-stat-val">{cartQty}</span></div>
-                    <div style={{marginLeft:'auto',display:'flex',gap:8}}>
-                      <button className="btn btn-sm" style={{background:'rgba(255,255,255,0.15)',color:'#fff',border:'1px solid rgba(255,255,255,0.2)'}} onClick={()=>setCart({})}>Clear</button>
-                      <button className="btn btn-sm" style={{background:'#fff',color:'var(--primary)',fontWeight:700}} onClick={()=>setCheckoutStep('cart')}>Review →</button>
                     </div>
-                  </div>
-                )}
-              </>}
-              {checkoutStep==='cart'&&(
-                <div style={{maxWidth:520}}>
-                  <div className="section-title" style={{marginBottom:14}}>Review order</div>
-                  <div className="card" style={{marginBottom:12}}>
-                    {cartItems.map(i=>(
-                      <div key={i.id} style={{display:'flex',justifyContent:'space-between',padding:'12px 0',borderBottom:'1px solid var(--border)',alignItems:'center'}}>
-                        <div><div style={{fontWeight:600,fontSize:13}}>{i.name} · {i.coffee_kg<1?`${i.coffee_kg*1000}g`:`${i.coffee_kg}kg`} × {i.qty}</div><div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>Pool {Rz(Number(i.pool_contribution)*i.qty)}</div></div>
-                        <span style={{fontSize:18,fontWeight:800,color:'var(--text-h)',letterSpacing:'-0.02em'}}>{Rz(Number(i.price)*i.qty)}</span>
-                      </div>
-                    ))}
-                    <div style={{display:'flex',justifyContent:'space-between',padding:'14px 0 0',fontSize:20,fontWeight:800,color:'var(--text-h)',letterSpacing:'-0.02em'}}>
-                      <span>Total</span><span style={{color:'var(--primary)'}}>{Rz(cartTotal)}</span>
-                    </div>
-                  </div>
-                  <div className="card" style={{marginBottom:12,fontSize:12,color:'var(--text-sub)',lineHeight:1.8}}>
-                    <strong style={{color:'var(--text-h)',display:'block',marginBottom:6}}>EFT payment</strong>
-                    FNB · OHMI Coffee Co. (Pty) Ltd · Ref: <strong style={{color:'var(--primary)'}}>{me?.id?.slice(0,8)?.toUpperCase()}-SHOP</strong>
-                  </div>
-                  <div style={{display:'flex',gap:10}}>
-                    <button className="btn btn-ghost btn-sm" onClick={()=>setCheckoutStep('browse')}>← Back</button>
-                    <button className="btn btn-primary" style={{flex:1}} disabled={busy==='order'} onClick={placeOrder}>{busy==='order'?'Placing…':'Confirm order'}</button>
-                  </div>
-                </div>
-              )}
-              {checkoutStep==='done'&&(
-                <div style={{maxWidth:440}}>
-                  <div className="hero-card hero-card-earn" style={{textAlign:'center',padding:'28px 24px'}}>
-                    <div style={{fontSize:40,marginBottom:12}}>☕</div>
-                    <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,0.65)',marginBottom:8}}>Order placed</div>
-                    <div style={{fontSize:24,fontWeight:800,color:'#fff',marginBottom:12}}>We roast on Tuesdays.</div>
-                    <p style={{fontSize:13,color:'rgba(255,255,255,0.7)',lineHeight:1.8,marginBottom:20}}>Ref: <strong>{me?.id?.slice(0,8)?.toUpperCase()}-SHOP</strong></p>
                     <div style={{display:'flex',gap:10,justifyContent:'center'}}>
-                      <button className="hero-card-action" onClick={()=>go('orders')}>View orders</button>
-                      <button className="hero-card-action" onClick={()=>setCheckoutStep('browse')}>Order more</button>
+                      <button onClick={()=>go('orders')} style={{background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.3)',borderRadius:'var(--r-full)',padding:'10px 20px',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>View orders</button>
+                      <button onClick={()=>{setCheckoutStep('browse');setCart({});}} style={{background:'#fff',color:'var(--green-text)',border:'none',borderRadius:'var(--r-full)',padding:'10px 20px',fontSize:13,fontWeight:700,cursor:'pointer',fontFamily:'inherit'}}>Shop more</button>
                     </div>
                   </div>
                 </div>
+              ) : checkoutStep==='cart' ? (
+                /* ── CART / CHECKOUT ── */
+                <div style={{display:'grid',gridTemplateColumns:'1fr 340px',gap:16,alignItems:'start'}}>
+                  {/* Left: cart items */}
+                  <div>
+                    <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
+                      <button className="btn btn-ghost btn-sm" onClick={()=>setCheckoutStep('browse')} style={{padding:'8px 14px'}}>← Continue shopping</button>
+                      <div className="section-title">Your cart · {cartQty} item{cartQty!==1?'s':''}</div>
+                    </div>
+                    <div className="card card-flush">
+                      {cartItems.map(i=>{
+                        const price=unitPrice(i);
+                        return(
+                          <div key={i.id} style={{display:'flex',gap:14,padding:'14px 16px',borderBottom:'1px solid var(--border)',alignItems:'center'}}>
+                            {i.image_url?(
+                              <img src={i.image_url} alt={i.name} style={{width:60,height:60,borderRadius:'var(--r-sm)',objectFit:'cover',objectPosition:'center 25%',flexShrink:0}}/>
+                            ):(
+                              <div style={{width:60,height:60,borderRadius:'var(--r-sm)',background:'linear-gradient(135deg,#6366F1,#0EA5E9)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:24,flexShrink:0}}>☕</div>
+                            )}
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontWeight:700,fontSize:14,color:'var(--text-h)',marginBottom:2}}>{i.name}</div>
+                              <div style={{fontSize:11,color:'var(--text-muted)'}}>1kg · 100% Arabica · Pool: {Rz(Number(i.pool_contribution||0)*i.qty)}</div>
+                            </div>
+                            <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
+                              <div style={{display:'flex',alignItems:'center',gap:8,background:'var(--surface-1)',borderRadius:'var(--r-full)',border:'1px solid var(--border)',padding:'4px 8px'}}>
+                                <button onClick={()=>addCart(i.id,-1)} style={{width:26,height:26,borderRadius:'50%',border:'none',background:'none',fontSize:18,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text-sub)',fontFamily:'inherit'}}>−</button>
+                                <span style={{fontSize:15,fontWeight:700,minWidth:20,textAlign:'center',color:'var(--text-h)'}}>{i.qty}</span>
+                                <button onClick={()=>addCart(i.id,1)} style={{width:26,height:26,borderRadius:'50%',border:'none',background:'none',fontSize:18,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text-sub)',fontFamily:'inherit'}}>+</button>
+                              </div>
+                              <div style={{textAlign:'right',minWidth:70}}>
+                                <div style={{fontSize:16,fontWeight:800,color:'var(--text-h)',letterSpacing:'-0.01em'}}>{Rz(price*i.qty)}</div>
+                                <div style={{fontSize:10,color:'var(--text-muted)'}}>{Rz(price)} each</div>
+                              </div>
+                              <button onClick={()=>addCart(i.id,-i.qty)} style={{background:'none',border:'none',color:'var(--text-dim)',cursor:'pointer',fontSize:18,padding:4,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center'}}>×</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {cartItems.length===0&&(
+                        <div style={{padding:'32px 20px',textAlign:'center',color:'var(--text-muted)'}}>
+                          <div style={{fontSize:32,marginBottom:8}}>🛒</div>
+                          Your cart is empty — <button style={{background:'none',border:'none',color:'var(--primary)',cursor:'pointer',fontWeight:600,fontFamily:'inherit'}} onClick={()=>setCheckoutStep('browse')}>browse coffees</button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Right: order summary */}
+                  <div style={{position:'sticky',top:20}}>
+                    <div className="card" style={{marginBottom:12}}>
+                      <div style={{fontSize:15,fontWeight:700,color:'var(--text-h)',marginBottom:14}}>Order summary</div>
+                      <div style={{display:'flex',flexDirection:'column',gap:8,marginBottom:14}}>
+                        {cartItems.map(i=>(
+                          <div key={i.id} style={{display:'flex',justifyContent:'space-between',fontSize:13}}>
+                            <span style={{color:'var(--text-sub)'}}>{i.name} × {i.qty}</span>
+                            <span style={{fontWeight:600}}>{Rz(unitPrice(i)*i.qty)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div style={{borderTop:'1px solid var(--border)',paddingTop:12,marginBottom:12}}>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:6}}>
+                          <span style={{color:'var(--text-sub)'}}>Pool contribution</span>
+                          <span style={{color:'var(--primary)',fontWeight:600}}>{Rz(cartPool)}</span>
+                        </div>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:13,marginBottom:6}}>
+                          <span style={{color:'var(--text-sub)'}}>Delivery</span>
+                          <span style={{color:'var(--green-text)',fontWeight:600}}>Calculated at dispatch</span>
+                        </div>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:18,fontWeight:800,color:'var(--text-h)',letterSpacing:'-0.01em',marginTop:8,paddingTop:8,borderTop:'2px solid var(--border)'}}>
+                          <span>Total</span>
+                          <span style={{color:'var(--primary)'}}>{Rz(cartTotal)}</span>
+                        </div>
+                      </div>
+                      {isMember&&(
+                        <div style={{padding:'8px 12px',background:'var(--green-bg)',borderRadius:'var(--r-xs)',border:'1px solid rgba(16,185,129,0.2)',fontSize:11,color:'var(--green-text)',fontWeight:600,marginBottom:12}}>
+                          ✓ Member pricing applied — saving {Rz(cartItems.reduce((s,i)=>(s+(Number(i.price_retail)-Number(i.price_member))*i.qty),0))}
+                        </div>
+                      )}
+                      <button className="btn btn-primary btn-full" disabled={busy==='order'||!cartItems.length} onClick={placeOrder} style={{fontSize:14,padding:'13px'}}>
+                        {busy==='order'?'Placing order…':'Place order'}
+                      </button>
+                    </div>
+                    <div className="card" style={{fontSize:12,color:'var(--text-sub)',lineHeight:1.8}}>
+                      <div style={{fontWeight:700,color:'var(--text-h)',marginBottom:6,fontSize:13}}>Payment — EFT</div>
+                      <div>Bank: FNB</div>
+                      <div>Account: OHMI Coffee Co. (Pty) Ltd</div>
+                      <div>Reference: <strong style={{color:'var(--primary)',fontFamily:'monospace'}}>{me?.id?.slice(0,8)?.toUpperCase()}-SHOP</strong></div>
+                      <div style={{marginTop:8,padding:'8px 10px',background:'var(--primary-bg)',borderRadius:'var(--r-xs)',fontSize:11,color:'var(--primary)',fontWeight:600}}>Orders processed within 48hrs of payment confirmation.</div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* ── PRODUCT GRID ── */
+                <>
+                  {/* Header */}
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:10}}>
+                    <div>
+                      <div className="section-title">OHMI Coffee Shop</div>
+                      <div style={{fontSize:13,color:'var(--text-muted)',marginTop:2}}>
+                        Single origin & blends · 1kg · 100% Arabica
+                        {isMember&&<span style={{marginLeft:8,color:'var(--green-text)',fontWeight:600}}>· Member price R365</span>}
+                      </div>
+                    </div>
+                    {cartQty>0&&(
+                      <button className="btn btn-primary" onClick={()=>setCheckoutStep('cart')} style={{display:'flex',alignItems:'center',gap:8}}>
+                        <i className="ti ti-shopping-cart" aria-hidden="true"/>
+                        Cart ({cartQty}) · {Rz(cartTotal)}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Loading state */}
+                  {shopProducts.length===0&&(
+                    <div style={{textAlign:'center',padding:'48px 20px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}>
+                      <div style={{fontSize:36,marginBottom:12}}>☕</div>
+                      <div style={{fontSize:15,fontWeight:600,color:'var(--text-h)',marginBottom:4}}>Loading coffees…</div>
+                      <div style={{fontSize:13,color:'var(--text-muted)'}}>If this persists, please refresh the page.</div>
+                    </div>
+                  )}
+
+                  {/* Product grid */}
+                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:16}}>
+                    {shopProducts.map(p=>{
+                      const qty=cart[p.id]||0;
+                      const price=unitPrice(p);
+                      return(
+                        <div key={p.id} style={{
+                          background:'var(--white)',borderRadius:'var(--r)',
+                          boxShadow:qty>0?'0 0 0 2px var(--primary), var(--shadow-md)':'var(--shadow-sm)',
+                          overflow:'hidden',display:'flex',flexDirection:'column',
+                          transition:'box-shadow 0.2s,transform 0.15s',
+                        }}
+                          onMouseEnter={e=>{if(!qty)e.currentTarget.style.transform='translateY(-2px)';}}
+                          onMouseLeave={e=>e.currentTarget.style.transform=''}>
+
+                          {/* Image */}
+                          <div style={{position:'relative',height:240,overflow:'hidden',background:'#0a0a0a',flexShrink:0}}>
+                            {p.image_url ? (
+                              <img
+                                src={p.image_url}
+                                alt={p.name}
+                                style={{width:'100%',height:'100%',objectFit:'cover',objectPosition:'center 15%',display:'block'}}
+                              />
+                            ) : (
+                              <div style={{width:'100%',height:'100%',background:'linear-gradient(135deg,#1a1a2e,#16213e)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:48}}>☕</div>
+                            )}
+                            {/* Qty badge */}
+                            {qty>0&&(
+                              <div style={{position:'absolute',top:10,right:10,width:30,height:30,borderRadius:'50%',background:'var(--primary)',color:'#fff',display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,fontWeight:800,boxShadow:'0 2px 8px rgba(99,102,241,0.5)'}}>
+                                {qty}
+                              </div>
+                            )}
+                            {/* Name overlay */}
+                            <div style={{position:'absolute',bottom:0,left:0,right:0,padding:'32px 14px 12px',background:'linear-gradient(transparent,rgba(0,0,0,0.85))'}}>
+                              <div style={{fontSize:15,fontWeight:800,color:'#fff',letterSpacing:'-0.01em',lineHeight:1.2}}>{p.name}</div>
+                            </div>
+                          </div>
+
+                          {/* Body */}
+                          <div style={{padding:'12px 14px 14px',flex:1,display:'flex',flexDirection:'column',gap:10}}>
+                            {/* Tasting note */}
+                            {p.description&&(
+                              <div style={{fontSize:11,color:'var(--text-muted)',lineHeight:1.6,flex:1}}>
+                                {p.description.split('·').slice(1,2).join('').trim() || p.description.slice(0,60)+'…'}
+                              </div>
+                            )}
+
+                            {/* Price + controls */}
+                            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                              <div>
+                                <div style={{fontSize:22,fontWeight:800,color:'var(--text-h)',letterSpacing:'-0.02em',lineHeight:1}}>R{price}</div>
+                                <div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>per 1kg bag</div>
+                              </div>
+                              {qty>0 ? (
+                                <div style={{display:'flex',alignItems:'center',gap:0,background:'var(--surface-1)',borderRadius:'var(--r-full)',border:'1.5px solid var(--primary)',overflow:'hidden'}}>
+                                  <button onClick={()=>addCart(p.id,-1)} style={{width:34,height:34,border:'none',background:'none',fontSize:20,cursor:'pointer',color:'var(--primary)',fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>−</button>
+                                  <span style={{fontSize:15,fontWeight:800,color:'var(--primary)',minWidth:24,textAlign:'center'}}>{qty}</span>
+                                  <button onClick={()=>addCart(p.id,1)} style={{width:34,height:34,border:'none',background:'none',fontSize:20,cursor:'pointer',color:'var(--primary)',fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:'inherit'}}>+</button>
+                                </div>
+                              ) : (
+                                <button className="btn btn-primary btn-sm" onClick={()=>addCart(p.id,1)} style={{borderRadius:'var(--r-full)',minHeight:36}}>
+                                  Add to cart
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Floating cart bar */}
+                  {cartQty>0&&(
+                    <div style={{
+                      position:'sticky',bottom:16,
+                      background:'var(--primary)',borderRadius:'var(--r)',
+                      padding:'14px 18px',display:'flex',alignItems:'center',gap:14,
+                      boxShadow:'0 8px 32px rgba(99,102,241,0.4)',margin:'0 4px',
+                      zIndex:10,
+                    }}>
+                      <div style={{display:'flex',alignItems:'center',gap:10,flex:1}}>
+                        <div style={{width:36,height:36,borderRadius:'var(--r-sm)',background:'rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🛒</div>
+                        <div>
+                          <div style={{fontSize:10,color:'rgba(255,255,255,0.6)',fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase'}}>{cartQty} item{cartQty!==1?'s':''} · {Rz(cartPool)} pool</div>
+                          <div style={{fontSize:20,fontWeight:800,color:'#fff',letterSpacing:'-0.02em',lineHeight:1}}>{Rz(cartTotal)}</div>
+                        </div>
+                      </div>
+                      <div style={{display:'flex',gap:8}}>
+                        <button onClick={()=>setCart({})} style={{background:'rgba(255,255,255,0.12)',color:'rgba(255,255,255,0.8)',border:'1px solid rgba(255,255,255,0.2)',borderRadius:'var(--r-full)',padding:'8px 14px',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Clear</button>
+                        <button onClick={()=>setCheckoutStep('cart')} style={{background:'#fff',color:'var(--primary)',border:'none',borderRadius:'var(--r-full)',padding:'10px 20px',fontSize:13,fontWeight:800,cursor:'pointer',fontFamily:'inherit',boxShadow:'0 2px 8px rgba(0,0,0,0.15)'}}>
+                          Checkout →
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </>}
 
