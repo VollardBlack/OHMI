@@ -673,6 +673,8 @@ export default function Admin() {
   const [trainingMods, setTrainingMods] = useState([]);
   const [wholesaleLics, setWholesaleLics] = useState([]);
   const [selRun, setSelRun] = useState(null);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [stockUpdates, setStockUpdates] = useState({});
   const [products, setProducts] = useState([]);
   const [stockMovements, setStockMovements] = useState([]);
   const [productTab, setProductTab] = useState('list'); // list | form | stock
@@ -1461,6 +1463,22 @@ export default function Admin() {
                   <div className="section-title">Commission Payouts</div>
                   <div style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>Run monthly commission calculations and manage payouts</div>
                 </div>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                  {commPayouts.length>0&&<button className="btn btn-white btn-sm" onClick={()=>{
+                    const rows=[['Member','Email','Bank','Account','Period','Rank','Pool %','Pool Amount','Bonus','Total','Travel Pts','Status']];
+                    commPayouts.forEach(p=>{
+                      const m=members.find(x=>x.id===p.member_id);
+                      rows.push([m?.full_name||'',m?.email||'',p.bank_name||'',p.bank_account||'',p.period,p.rank_name,p.pool_pct,p.pool_amount,p.rank_bonus,p.total_earned,p.travel_pts,p.status]);
+                    });
+                    const csv=rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+                    const a=document.createElement('a');
+                    a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+                    a.download=`ohmi-payouts-${new Date().toISOString().slice(0,7)}.csv`;
+                    a.click();
+                    flash('CSV downloaded');
+                  }}>
+                    <i className="ti ti-download" style={{fontSize:13}}/> Export CSV
+                  </button>}
                 <button className="btn btn-primary" onClick={async()=>{
                   const period=new Date().toISOString().slice(0,7);
                   setBusy('run');
@@ -1470,6 +1488,7 @@ export default function Admin() {
                 }} disabled={busy==='run'}>
                   {busy==='run'?'Running…':'Run commission now →'}
                 </button>
+                </div>
               </div>
 
               {/* Commission runs */}
