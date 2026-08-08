@@ -768,9 +768,14 @@ export default function Admin() {
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css" />
       {/* Mobile topbar */}
       <div className="mobile-topbar">
-        <span className="mobile-topbar-logo">Admin</span>
-        <div style={{ display:'flex', gap:8 }}>
-          <span className="topbar-badge topbar-badge-gold" style={{ fontSize:9 }}>{activeMembers.length} active</span>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{width:28,height:28,borderRadius:8,background:'linear-gradient(135deg,#EF4444,#F59E0B)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:13,fontWeight:800,color:'#fff'}}>A</div>
+          <span style={{fontWeight:800,fontSize:15,color:'var(--text-h)',letterSpacing:'-0.01em'}}>Admin</span>
+          <span style={{fontSize:11,color:'var(--text-muted)'}}>· {TABS.find(t=>t.id===tab)?.tip}</span>
+        </div>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}>
+          <span className="pill pill-green" style={{fontSize:9}}>{activeMembers.length} active</span>
+          {notifs.filter(n=>!n.read).length>0&&<div style={{width:8,height:8,borderRadius:'50%',background:'var(--red)'}}/>}
         </div>
       </div>
 
@@ -1031,18 +1036,18 @@ export default function Admin() {
               )}
 
               {/* Stock alerts */}
-              {products.filter(p=>Number(p.stock_qty)<=Number(p.stock_low_threshold)).length>0&&(
+              {products.filter(p=>p.status==='active'&&Number(p.stock_qty)<=Number(p.stock_low_threshold)).length>0&&(
                 <div className="card card-flush">
-                  <div style={{padding:'14px 18px',borderBottom:'1px solid var(--border)',background:'rgba(239,68,68,0.04)',display:'flex',alignItems:'center',gap:10}}>
-                    <i className="ti ti-alert-triangle" style={{color:'var(--red)',fontSize:16}} aria-hidden="true"/>
-                    <span className="section-label">Low stock alerts</span>
-                    <button className="btn btn-ghost btn-xs" style={{marginLeft:'auto'}} onClick={()=>setTab('products')}>Manage stock</button>
+                  <div style={{padding:'12px 18px',borderBottom:'1px solid var(--border)',background:'rgba(239,68,68,0.04)',display:'flex',alignItems:'center',gap:10}}>
+                    <i className="ti ti-alert-triangle" style={{color:'var(--red)',fontSize:15}} aria-hidden="true"/>
+                    <span className="section-label">Low stock · active products only</span>
+                    <button className="btn btn-ghost btn-xs" style={{marginLeft:'auto'}} onClick={()=>setTab('products')}>Manage →</button>
                   </div>
-                  <div style={{padding:'14px 18px',display:'flex',gap:10,flexWrap:'wrap'}}>
-                    {products.filter(p=>Number(p.stock_qty)<=Number(p.stock_low_threshold)).map(p=>(
-                      <div key={p.id} style={{padding:'8px 14px',background:'var(--red-bg)',border:'1px solid rgba(239,68,68,0.2)',borderRadius:'var(--r-sm)',display:'flex',alignItems:'center',gap:8}}>
-                        <span style={{fontSize:12,fontWeight:600,color:'var(--red-text)'}}>{p.name}</span>
-                        <span style={{fontSize:11,color:'var(--red-text)',fontWeight:800}}>{Number(p.stock_qty)} left</span>
+                  <div style={{padding:'10px 14px',display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:8}}>
+                    {products.filter(p=>p.status==='active'&&Number(p.stock_qty)<=Number(p.stock_low_threshold)).map(p=>(
+                      <div key={p.id} style={{padding:'8px 12px',background:'var(--red-bg)',border:'1px solid rgba(239,68,68,0.15)',borderRadius:'var(--r-sm)',display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+                        <span style={{fontSize:12,fontWeight:600,color:'var(--red-text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</span>
+                        <span style={{fontSize:11,color:'var(--red-text)',fontWeight:800,flexShrink:0}}>{Number(p.stock_qty)} left</span>
                       </div>
                     ))}
                   </div>
@@ -1826,14 +1831,14 @@ export default function Admin() {
           <button className={`mobile-nav-item${tab==='network'?' on':''}`} onClick={()=>setTab('network')}>
             <i className="ti ti-binary-tree-2" aria-hidden="true"/><span>Tree</span>
           </button>
-          <button className={`mobile-nav-item${tab==='orders'?' on':''}`} onClick={()=>setTab('orders')}>
+          <button className={`mobile-nav-item${tab==='orders'||tab==='welcome'?' on':''}`} onClick={()=>setTab('orders')}>
             <i className="ti ti-shopping-bag" aria-hidden="true"/><span>Orders</span>
             {pendingOrders.length>0&&<span className="m-badge" style={{background:'var(--red)'}}>{pendingOrders.length}</span>}
           </button>
-          <a href="/dashboard" className="mobile-nav-item" style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:3,textDecoration:'none',color:'var(--text-muted)',flex:1,padding:'6px 2px 8px'}}>
-            <i className="ti ti-user" aria-hidden="true"/><span>Member</span>
-          </a>
-          <button className={`mobile-nav-item${['billing','ledger','calc','foundation','travel'].includes(tab)?' on':''}`} onClick={()=>setTab(tab==='billing'?'ledger':tab==='ledger'?'calc':tab==='calc'?'foundation':tab==='foundation'?'travel':'billing')}>
+          <button className={`mobile-nav-item${tab==='products'?' on':''}`} onClick={()=>setTab('products')}>
+            <i className="ti ti-coffee" aria-hidden="true"/><span>Products</span>
+          </button>
+          <button className={`mobile-nav-item${['payouts','subbilling','invoices','calc','foundation','travel','wholesale','edutrain'].includes(tab)?' on':''}`} onClick={()=>setTab('payouts')}>
             <i className="ti ti-dots" aria-hidden="true"/><span>More</span>
           </button>
         </div>
