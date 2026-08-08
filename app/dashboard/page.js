@@ -80,7 +80,7 @@ export default function Dashboard() {
   useEffect(()=>{ load(); },[load]);
 
   // ── Computed ──────────────────────────────────────────
-  const isMember     = me?.status === 'active';
+  const isMember     = true; // All buyers must be members or wholesale — no public retail
   const cartItems    = products.filter(p=>cart[p.id]>0).map(p=>({...p,qty:cart[p.id]||0}));
   const cartTotal    = cartItems.reduce((s,i)=>s+(isMember?Number(i.price_member||i.price_retail):Number(i.price_retail))*i.qty,0);
   const grindTotal   = cartItems.reduce((s,i)=>s+(grind[i.id]?3*i.qty:0),0);
@@ -444,7 +444,7 @@ export default function Dashboard() {
                           <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
                             <div>
                               <div style={{fontSize:20,fontWeight:800,color:'var(--text-h)',letterSpacing:'-0.02em',lineHeight:1}}>{Rz(price(p))}</div>
-                              {isMember&&Number(p.price_member)!==Number(p.price_retail)&&<div style={{fontSize:9,color:'var(--text-muted)'}}>Retail {Rz(p.price_retail)}</div>}
+
                             </div>
                             {qty>0?(
                               <div style={{display:'flex',alignItems:'center',gap:0,background:'var(--surface-1)',borderRadius:999,border:'1.5px solid var(--primary)',overflow:'hidden'}}>
@@ -468,7 +468,7 @@ export default function Dashboard() {
                     <div key={i.id} style={{background:'#fff',borderRadius:'var(--r)',padding:'14px 16px',border:'1px solid var(--border)',display:'flex',alignItems:'center',gap:12}}>
                       <div style={{flex:1}}>
                         <div style={{fontWeight:700,fontSize:14,color:'var(--text-h)'}}>{i.name}</div>
-                        <div style={{fontSize:11,color:'var(--text-muted)'}}>{i.weight_g>=1000?'1kg':'250g'} · {Number(i.stock_qty)===0?'Roasted to order (3-5 days)':'Ships 1-2 days'}</div>
+                        <div style={{fontSize:11,color:'var(--text-muted)'}}>{i.weight_g>=1000?'1kg':'250g'} · {Number(i.stock_qty)===0?'Roasted to order · 3-5 days':'Ships 1-2 days'}</div>
                         <div style={{display:'flex',gap:8,marginTop:8}}>
                           <button onClick={()=>setGrind(g=>({...g,[i.id]:false}))} className={!grind[i.id]?'btn btn-primary btn-xs':'btn btn-ghost btn-xs'} style={{borderRadius:999}}>Whole beans</button>
                           <button onClick={()=>setGrind(g=>({...g,[i.id]:true}))} className={grind[i.id]?'btn btn-primary btn-xs':'btn btn-ghost btn-xs'} style={{borderRadius:999}}>Ground +R3</button>
@@ -592,46 +592,88 @@ export default function Dashboard() {
             </>}
 
             {/* ── EARNINGS ── */}
-            {tab==='earnings'&&<>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12}}>
+            {tab==='earnings'&&(()=>{
+              // Group ledger by month
+              const byMonth = {};
+              ledger.forEach(l=>{
+                const mo = l.period||l.created_at?.slice(0,7)||'Unknown';
+                if(!byMonth[mo]) byMonth[mo]={income:0,redemptions:0,entries:[]};
+                const amt = Number(l.amount||0);
+                if(['redemption','expiry'].includes(l.entry_type)) byMonth[mo].redemptions+=amt;
+                else byMonth[mo].income+=amt;
+                byMonth[mo].entries.push(l);
+              });
+              const months = Object.keys(byMonth).sort().reverse();
+              const thisMonth = months[0]||new Date().toISOString().slice(0,7);
+              const thisIncome = byMonth[thisMonth]?.income||0;
+              return(<>
+              {/* Monthly KPIs */}
+              <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',borderRadius:'var(--r)',padding:'22px 24px',color:'#fff',boxShadow:'var(--shadow-md)',position:'relative',overflow:'hidden'}}>
+                <div style={{position:'absolute',width:120,height:120,borderRadius:'50%',background:'rgba(255,255,255,0.06)',top:-30,right:-30}}/>
+                <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,0.65)',marginBottom:6}}>This month · {new Date().toLocaleDateString('en-ZA',{month:'long',year:'numeric'})}</div>
+                <div style={{fontSize:40,fontWeight:900,letterSpacing:'-0.03em',lineHeight:1,marginBottom:4}}>{Rz(thisIncome)}</div>
+                <div style={{fontSize:13,color:'rgba(255,255,255,0.7)'}}>Pool share: {rankDef?.pool_pct||0}% · Rank bonus: {Rz(rankDef?.monthly_bonus||0)}</div>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:12}}>
                 {[
-                  ['Commission balance',Rz(commBalance),'linear-gradient(135deg,#6366F1,#0EA5E9)'],
-                  ['Travel points',(me?.commission_balance||0).toLocaleString(),'linear-gradient(135deg,#8B5CF6,#6366F1)'],
-                  ['Pool share',`${rankDef?.pool_pct||0}%`,'linear-gradient(135deg,#10B981,#0EA5E9)'],
-                  ['Rank bonus',Rz(rankDef?.monthly_bonus||0),'linear-gradient(135deg,#F59E0B,#EF4444)'],
-                ].map(([label,val,bg])=>(
-                  <div key={label} style={{padding:'20px',background:bg,borderRadius:'var(--r)',color:'#fff',boxShadow:'var(--shadow-md)',position:'relative',overflow:'hidden'}}>
-                    <div style={{position:'absolute',width:80,height:80,borderRadius:'50%',background:'rgba(255,255,255,0.07)',top:-20,right:-20}}/>
-                    <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:'rgba(255,255,255,0.65)',marginBottom:8}}>{label}</div>
-                    <div style={{fontSize:28,fontWeight:800,letterSpacing:'-0.02em',lineHeight:1}}>{val}</div>
+                  ['Balance',Rz(commBalance),'stat-icon-primary','ti-wallet'],
+                  ['Travel pts',(me?.commission_balance||0).toLocaleString(),'stat-icon-purple','ti-sparkles'],
+                  ['Pool share',`${rankDef?.pool_pct||0}%`,'stat-icon-teal','ti-chart-pie'],
+                  ['Rank bonus',Rz(rankDef?.monthly_bonus||0),'stat-icon-amber','ti-star'],
+                ].map(([l,v,cls,icon])=>(
+                  <div key={l} className="stat-card">
+                    <div className={`stat-icon ${cls}`}><i className={`ti ${icon}`}/></div>
+                    <div><div className="stat-val" style={{fontSize:18}}>{v}</div><div className="stat-label">{l}</div></div>
                   </div>
                 ))}
               </div>
-              <div className="card card-flush">
-                <div style={{padding:'14px 18px',borderBottom:'1px solid var(--border)',background:'var(--surface-1)'}}><span className="section-label">Commission ledger</span></div>
-                {ledger.length===0&&<div style={{padding:32,textAlign:'center',color:'var(--text-muted)'}}>No commission history yet</div>}
-                {ledger.map(l=>(
-                  <div key={l.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 18px',borderBottom:'1px solid var(--border)'}}>
+
+              {/* Monthly breakdown */}
+              {months.length===0&&<div style={{textAlign:'center',padding:48,color:'var(--text-muted)'}}>
+                <div style={{fontSize:36,marginBottom:10}}>💰</div>
+                <div style={{fontWeight:600}}>No earnings yet</div>
+                <div style={{fontSize:13,marginTop:6}}>Commission is paid monthly once your rank qualifies</div>
+              </div>}
+              {months.map(mo=>(
+                <div key={mo} className="card card-flush" style={{overflow:'hidden'}}>
+                  <div style={{padding:'14px 18px',background:'var(--surface-1)',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                     <div>
-                      <div style={{fontSize:13,fontWeight:600,color:'var(--text-h)'}}>{l.note||l.entry_type}</div>
-                      <div style={{fontSize:11,color:'var(--text-muted)'}}>{fmtD(l.created_at)}</div>
+                      <div style={{fontWeight:700,fontSize:14,color:'var(--text-h)'}}>{new Date(mo+'-01').toLocaleDateString('en-ZA',{month:'long',year:'numeric'})}</div>
+                      <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{byMonth[mo].entries.length} transaction{byMonth[mo].entries.length!==1?'s':''}</div>
                     </div>
-                    <div style={{fontSize:16,fontWeight:800,color:['redemption','expiry'].includes(l.entry_type)?'var(--red-text)':'var(--green-text)'}}>
-                      {['redemption','expiry'].includes(l.entry_type)?'−':'+'}R{Number(l.points||0).toLocaleString('en-ZA')}
+                    <div style={{textAlign:'right'}}>
+                      <div style={{fontSize:20,fontWeight:800,color:'var(--primary)'}}>{Rz(byMonth[mo].income)}</div>
+                      {byMonth[mo].redemptions>0&&<div style={{fontSize:11,color:'var(--red-text)'}}>−{Rz(byMonth[mo].redemptions)} redeemed</div>}
                     </div>
+                  </div>
+                  {byMonth[mo].entries.map(l=>(
+                    <div key={l.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 18px',borderBottom:'1px solid var(--border)'}}>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600,color:'var(--text-h)'}}>{l.note||l.entry_type?.replace(/_/g,' ')}</div>
+                        <div style={{fontSize:10,color:'var(--text-muted)',marginTop:2}}>{fmtD(l.created_at)}</div>
+                      </div>
+                      <div style={{fontSize:15,fontWeight:800,color:['redemption','expiry'].includes(l.entry_type)?'var(--red-text)':'var(--green-text)'}}>
+                        {['redemption','expiry'].includes(l.entry_type)?'−':'+' }{Rz(Number(l.amount||0))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+
+              {/* Payout banking */}
+              <div className="card" style={{background:'rgba(99,102,241,0.04)',border:'1px solid var(--primary-border)'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                  <div className="section-label">Payout banking</div>
+                  <button className="btn btn-ghost btn-xs" onClick={()=>go('profile')}>Edit</button>
+                </div>
+                {[['Bank',me?.payout_bank_name],['Account',me?.payout_account_number],['Branch code',me?.payout_branch_code]].map(([l,v])=>(
+                  <div key={l} style={{display:'flex',justifyContent:'space-between',padding:'8px 0',borderBottom:'1px solid var(--border)',fontSize:13}}>
+                    <span style={{color:'var(--text-muted)'}}>{l}</span>
+                    <span style={{fontWeight:600,color:v?'var(--text-h)':'var(--red-text)'}}>{v||'Not set — add to receive payouts'}</span>
                   </div>
                 ))}
               </div>
-              <div className="card" style={{background:'rgba(99,102,241,0.04)',border:'1px solid var(--primary-border)'}}>
-                <div className="section-label" style={{marginBottom:10}}>Commission payout details</div>
-                <div style={{fontSize:13,color:'var(--text-sub)',lineHeight:1.8}}>
-                  <div>Bank: <strong>{me?.payout_bank_name||'Not set'}</strong></div>
-                  <div>Account: <strong>{me?.payout_account_number||'Not set'}</strong></div>
-                  <div>Branch: <strong>{me?.payout_branch_code||'Not set'}</strong></div>
-                </div>
-                <button className="btn btn-ghost btn-sm" style={{marginTop:12}} onClick={()=>go('profile')}>Update banking details →</button>
-              </div>
-            </>}
+            </>);})()}
 
             {/* ── LIFESTYLE ── */}
             {tab==='lifestyle'&&<>
@@ -805,7 +847,7 @@ export default function Dashboard() {
       {/* Mobile bottom nav */}
       <nav className="mobile-nav">
         <div className="mobile-nav-inner">
-          {[['home','ti-home','Home'],['network','ti-binary-tree-2','Network'],['shop','ti-shopping-bag','Shop'],['earnings','ti-coin','Earn'],['training','ti-school','Learn']].map(([id,icon,label])=>(
+          {[['home','ti-home','Home'],['network','ti-binary-tree-2','Network'],['shop','ti-shopping-bag','Shop'],['earnings','ti-coin','Earn'],['profile','ti-user','Profile']].map(([id,icon,label])=>(
             <button key={id} className={`mobile-nav-item${tab===id?' on':''}`} onClick={()=>go(id)}>
               <i className={`ti ${icon}`}/>
               <span>{label}</span>
