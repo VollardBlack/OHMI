@@ -12,25 +12,15 @@ export default function Login() {
     e.preventDefault();
     setBusy(true); setErr('');
     try {
-      // Check admin first
-      const { data: admin } = await supabase
-        .from('members').select('id,status,role')
-        .eq('email', email.trim().toLowerCase())
-        .eq('role', 'admin').single();
-      if (admin) {
-        localStorage.setItem('ohmi_member_id', admin.id);
-        localStorage.setItem('ohmi_role', 'admin');
-        window.location.href = '/admin';
-        return;
-      }
-      // Check member
       const { data: member } = await supabase
-        .from('members').select('id,status')
+        .from('members').select('id,status,email')
         .eq('email', email.trim().toLowerCase()).single();
       if (member) {
+        // brandon@ohmicoffee.co.za or any admin email gets admin role
+        const isAdmin = ['brandon@ohmicoffee.co.za','admin@ohmicoffee.co.za'].includes(member.email);
         localStorage.setItem('ohmi_member_id', member.id);
-        localStorage.setItem('ohmi_role', 'member');
-        window.location.href = '/dashboard';
+        localStorage.setItem('ohmi_role', isAdmin ? 'admin' : 'member');
+        window.location.href = isAdmin ? '/admin' : '/dashboard';
         return;
       }
       setErr('No account found with that email address.');
@@ -42,16 +32,17 @@ export default function Login() {
   }
 
   function quickAccess(role, path) {
-    // For demo — find the first member/admin and log them in
-    supabase.from('members').select('id').eq('role', role === 'admin' ? 'admin' : 'member').limit(1).single()
+    // Find first active member by status
+    supabase.from('members').select('id').eq('status', 'active').limit(1).single()
       .then(({ data }) => {
-        if (data) {
-          localStorage.setItem('ohmi_member_id', data.id);
-          localStorage.setItem('ohmi_role', role);
-        } else {
-          localStorage.setItem('ohmi_member_id', 'demo');
-          localStorage.setItem('ohmi_role', role);
-        }
+        const id = data?.id || '00000000-0000-0000-0000-000000000001';
+        localStorage.setItem('ohmi_member_id', id);
+        localStorage.setItem('ohmi_role', role);
+        window.location.href = path;
+      })
+      .catch(() => {
+        localStorage.setItem('ohmi_member_id', '00000000-0000-0000-0000-000000000001');
+        localStorage.setItem('ohmi_role', role);
         window.location.href = path;
       });
   }
