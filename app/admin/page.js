@@ -663,6 +663,12 @@ export default function Admin() {
   const [showNotifs, setShowNotifs] = useState(false);
   const [welcomeOrders, setWelcomeOrders] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [commRuns, setCommRuns] = useState([]);
+  const [commPayouts, setCommPayouts] = useState([]);
+  const [subBills, setSubBills] = useState([]);
+  const [trainingMods, setTrainingMods] = useState([]);
+  const [wholesaleLics, setWholesaleLics] = useState([]);
+  const [selRun, setSelRun] = useState(null);
   const [products, setProducts] = useState([]);
   const [stockMovements, setStockMovements] = useState([]);
   const [productTab, setProductTab] = useState('list'); // list | form | stock
@@ -675,7 +681,7 @@ export default function Admin() {
   const flash = m => { setToast(m); setTimeout(() => setToast(''), 3000); };
 
   const load = useCallback(async () => {
-    const [m, n, o, s, a, l, f, b, p, po, tb, pr, sm, tr, notifData, wo, inv] = await Promise.all([
+    const [m, n, o, s, a, l, f, b, p, po, tb, pr, sm, tr, notifData, wo, inv, cr, cp, sb, tm, wl] = await Promise.all([
       supabase.from('members').select('*').order('created_at', { ascending: false }),
       supabase.from('tree_view').select('*'),
       supabase.from('retail_orders').select('*').order('created_at', { ascending: false }),
@@ -708,6 +714,11 @@ export default function Admin() {
     setNotifs(notifData.data||[]);
     setWelcomeOrders(wo.data||[]);
     setInvoices(inv.data||[]);
+    setCommRuns(cr.data||[]);
+    setCommPayouts(cp.data||[]);
+    setSubBills(sb.data||[]);
+    setTrainingMods(tm.data||[]);
+    setWholesaleLics(wl.data||[]);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -799,7 +810,7 @@ export default function Admin() {
               </button>
             ))}
             <div className="sidebar-section">Catalogue</div>
-            {[TABS[8],TABS[9],TABS[10],TABS[11]].map(t=>(
+            {[TABS[8],TABS[9],TABS[10],TABS[11],TABS[12],TABS[13],TABS[14],TABS[15]].map(t=>(
               <button key={t.id} className={`sidebar-item${tab===t.id?' on':''}`} onClick={()=>setTab(t.id)}>
                 <i className={`ti ${t.icon}`} aria-hidden="true"/>
                 {t.tip}
@@ -1422,6 +1433,170 @@ export default function Admin() {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            </>}
+
+            {/* ── PAYOUTS ── */}
+            {tab==='payouts'&&<>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:12}}>
+                <div>
+                  <div className="section-title">Commission Payouts</div>
+                  <div style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>Run monthly commission calculations and manage payouts</div>
+                </div>
+                <button className="btn btn-primary" onClick={async()=>{
+                  const period=new Date().toISOString().slice(0,7);
+                  setBusy('run');
+                  const {data,error}=await supabase.rpc('run_commission_period',{p_period:period});
+                  if(error){flash('Error: '+error.message);}else{flash(`Commission run created for ${period}`);loadData();}
+                  setBusy('');
+                }} disabled={busy==='run'}>
+                  {busy==='run'?'Running…':'Run commission now →'}
+                </button>
+              </div>
+
+              {/* Commission runs */}
+              {commRuns.map(run=>(
+                <div key={run.id} className="card card-flush" style={{overflow:'hidden'}}>
+                  <div style={{padding:'14px 20px',background:run.status==='paid'?'var(--green-bg)':run.status==='approved'?'var(--primary-bg)':'var(--surface-1)',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center',cursor:'pointer'}} onClick={()=>setSelRun(selRun===run.id?null:run.id)}>
+                    <div>
+                      <div style={{fontWeight:700,fontSize:15,color:'var(--text-h)'}}>{run.period} Commission Run</div>
+                      <div style={{fontSize:12,color:'var(--text-muted)',marginTop:2}}>{run.member_count} members · {fmtR(run.total_pool)} pool · {fmtR(run.total_paid_out)} paid out</div>
+                    </div>
+                    <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                      <span className={`pill pill-${run.status==='paid'?'green':run.status==='approved'?'primary':'amber'}`}>{run.status}</span>
+                      {run.status==='draft'&&<button className="btn btn-primary btn-xs" onClick={async(e)=>{e.stopPropagation();await supabase.from('commission_runs').update({status:'approved',approved_at:new Date().toISOString()}).eq('id',run.id);flash('Approved');loadData();}}>Approve</button>}
+                      {run.status==='approved'&&<button className="btn btn-xs" style={{background:'var(--green-bg)',color:'var(--green-text)',border:'1px solid rgba(16,185,129,0.2)'}} onClick={async(e)=>{e.stopPropagation();await supabase.from('commission_runs').update({status:'paid',paid_at:new Date().toISOString()}).eq('id',run.id);await supabase.from('commission_payouts').update({status:'paid',paid_at:new Date().toISOString()}).eq('run_id',run.id);flash('Marked as paid');loadData();}}>Mark Paid</button>}
+                    </div>
+                  </div>
+                  {selRun===run.id&&<table className="data-table">
+                    <thead><tr><th>Member</th><th>Rank</th><th>Left leg</th><th>Right leg</th><th>Pool %</th><th>Pool amt</th><th>Bonus</th><th>Total</th><th>Travel pts</th><th>Bank</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {commPayouts.filter(p=>p.run_id===run.id).map(p=>{
+                        const m=members.find(x=>x.id===p.member_id);
+                        return(
+                          <tr key={p.id}>
+                            <td style={{fontWeight:600}}>{m?.full_name||'?'}</td>
+                            <td><span className="pill pill-primary" style={{fontSize:9}}>{p.rank_name}</span></td>
+                            <td>{p.left_vol}</td>
+                            <td>{p.right_vol}</td>
+                            <td>{p.pool_pct}%</td>
+                            <td style={{fontWeight:600}}>{fmtR(p.pool_amount)}</td>
+                            <td>{fmtR(p.rank_bonus)}</td>
+                            <td style={{fontWeight:800,color:'var(--primary)'}}>{fmtR(p.total_earned)}</td>
+                            <td>{Number(p.travel_pts).toLocaleString()}</td>
+                            <td style={{fontSize:11,color:'var(--text-muted)'}}>{p.bank_account?`${p.bank_name} ${p.bank_account}`:'Not set'}</td>
+                            <td><span className={`pill pill-${p.status==='paid'?'green':'amber'}`}>{p.status}</span></td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>}
+                </div>
+              ))}
+              {commRuns.length===0&&<div style={{textAlign:'center',padding:48,color:'var(--text-muted)'}}>No commission runs yet. Click "Run commission now" to generate the first one.</div>}
+            </>}
+
+            {/* ── SUBSCRIPTIONS ── */}
+            {tab==='billing'&&<>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
+                <div>
+                  <div className="section-title">Subscription Billing</div>
+                  <div style={{fontSize:13,color:'var(--text-muted)',marginTop:4}}>R1,500/month per active member · {fmtR(activeMembers.length*1500)} this month</div>
+                </div>
+                <button className="btn btn-primary" onClick={async()=>{
+                  setBusy('bills');
+                  const period=new Date().toISOString().slice(0,7);
+                  const due=new Date(); due.setDate(due.getDate()+7);
+                  for(const m of activeMembers){
+                    const invNum='SUB-'+m.id.slice(0,6).toUpperCase()+'-'+period;
+                    await supabase.from('subscription_bills').upsert({member_id:m.id,billing_period:period,amount:1500,pool_amount:500,status:'unpaid',due_date:due.toISOString().slice(0,10),invoice_number:invNum},{onConflict:'invoice_number'});
+                  }
+                  flash(`${activeMembers.length} subscription bills generated`);setBusy('');loadData();
+                }} disabled={busy==='bills'}>
+                  {busy==='bills'?'Generating…':"Generate this month's bills"}
+                </button>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12}}>
+                {[
+                  ['Paid',subBills.filter(b=>b.status==='paid').length,'var(--green-text)'],
+                  ['Unpaid',subBills.filter(b=>b.status==='unpaid').length,'var(--amber)'],
+                  ['Overdue',subBills.filter(b=>b.status==='overdue').length,'var(--red-text)'],
+                  ['Total billed',fmtR(subBills.reduce((s,b)=>s+Number(b.amount||0),0)),'var(--primary)'],
+                ].map(([l,v,c])=>(
+                  <div key={l} className="stat-card"><div><div className="stat-val" style={{color:c,fontSize:22}}>{v}</div><div className="stat-label">{l}</div></div></div>
+                ))}
+              </div>
+              <div className="card card-flush">
+                <table className="data-table">
+                  <thead><tr><th>Invoice</th><th>Member</th><th>Period</th><th>Amount</th><th>Due</th><th>Status</th><th>Actions</th></tr></thead>
+                  <tbody>
+                    {subBills.length===0&&<tr><td colSpan="7" style={{textAlign:'center',padding:32,color:'var(--text-muted)'}}>No bills generated yet</td></tr>}
+                    {subBills.slice(0,50).map(b=>{
+                      const m=members.find(x=>x.id===b.member_id);
+                      const overdue=b.status==='unpaid'&&b.due_date&&new Date(b.due_date)<new Date();
+                      return(
+                        <tr key={b.id}>
+                          <td style={{fontFamily:'monospace',fontSize:11,color:'var(--primary)'}}>{b.invoice_number}</td>
+                          <td style={{fontWeight:600}}>{m?.full_name||'?'}</td>
+                          <td style={{color:'var(--text-muted)'}}>{b.billing_period}</td>
+                          <td style={{fontWeight:700}}>{fmtR(b.amount)}</td>
+                          <td style={{color:overdue?'var(--red-text)':'var(--text-muted)',fontWeight:overdue?700:400}}>{fmtD(b.due_date)}{overdue&&' ⚠'}</td>
+                          <td><span className={`pill pill-${b.status==='paid'?'green':overdue?'red':'amber'}`}>{overdue?'overdue':b.status}</span></td>
+                          <td>
+                            {b.status!=='paid'&&<button className="btn btn-xs btn-primary" onClick={async()=>{await supabase.from('subscription_bills').update({status:'paid',paid_at:new Date().toISOString()}).eq('id',b.id);flash('Marked paid');loadData();}}>Mark Paid</button>}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>}
+
+            {/* ── WHOLESALE ── */}
+            {tab==='wholesale'&&<>
+              <div className="section-title" style={{marginBottom:20}}>Wholesale Licence Holders</div>
+              <div className="card card-flush">
+                <table className="data-table">
+                  <thead><tr><th>Licence #</th><th>Member</th><th>Business</th><th>Monthly fee</th><th>Status</th><th>Issued</th></tr></thead>
+                  <tbody>
+                    {wholesaleLics.length===0&&<tr><td colSpan="6" style={{textAlign:'center',padding:32,color:'var(--text-muted)'}}>No wholesale licences yet. Issue from the Members tab.</td></tr>}
+                    {wholesaleLics.map(w=>{
+                      const m=members.find(x=>x.id===w.member_id);
+                      return(
+                        <tr key={w.id}>
+                          <td style={{fontFamily:'monospace',fontSize:11,color:'var(--primary)',fontWeight:700}}>{w.licence_number}</td>
+                          <td style={{fontWeight:600}}>{m?.full_name||'?'}</td>
+                          <td style={{color:'var(--text-muted)'}}>{w.business_name||'—'}</td>
+                          <td style={{fontWeight:700}}>{fmtR(w.monthly_fee)}</td>
+                          <td><span className={`pill pill-${w.status==='active'?'green':'red'}`}>{w.status}</span></td>
+                          <td style={{color:'var(--text-muted)',fontSize:12}}>{fmtD(w.issued_at)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </>}
+
+            {/* ── TRAINING ── */}
+            {tab==='edutrain'&&<>
+              <div className="section-title" style={{marginBottom:20}}>Training Modules ({trainingMods.length})</div>
+              <div className="card card-flush">
+                <table className="data-table">
+                  <thead><tr><th>Title</th><th>Category</th><th>Duration</th><th>Required</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {trainingMods.map(m=>(
+                      <tr key={m.id}>
+                        <td style={{fontWeight:600}}>{m.title}</td>
+                        <td><span className="pill pill-grey" style={{fontSize:9}}>{m.category}</span></td>
+                        <td style={{color:'var(--text-muted)'}}>{m.duration_mins||m.duration_min} min</td>
+                        <td>{m.required?<span className="pill pill-amber" style={{fontSize:9}}>Required</span>:<span style={{color:'var(--text-dim)',fontSize:12}}>Optional</span>}</td>
+                        <td><span className={`pill pill-${m.active!==false&&m.status!=='inactive'?'green':'grey'}`}>{m.active!==false&&m.status!=='inactive'?'Active':'Inactive'}</span></td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
