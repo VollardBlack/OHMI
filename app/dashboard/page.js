@@ -86,8 +86,8 @@ export default function Dashboard() {
   const grindTotal   = cartItems.reduce((s,i)=>s+(grind[i.id]?3*i.qty:0),0);
   const orderTotal   = cartTotal + grindTotal + shipping.fee;
   const cartQty      = cartItems.reduce((s,i)=>s+i.qty,0);
-  const commBalance  = ledger.filter(l=>['rank_bonus','adjustment','signup_bonus'].includes(l.entry_type)).reduce((s,l)=>s+Number(l.points||0),0)
-                     - ledger.filter(l=>['redemption','expiry'].includes(l.entry_type)).reduce((s,l)=>s+Number(l.points||0),0);
+  const commBalance  = ledger.filter(l=>!['redemption','expiry'].includes(l.entry_type)).reduce((s,l)=>s+Number(l.amount||0),0)
+                     - ledger.filter(l=>['redemption','expiry'].includes(l.entry_type)).reduce((s,l)=>s+Number(l.amount||0),0);
   const rank         = me?.rank || 'Unranked';
   const rankCol      = RANK_COLOURS[rank] || '#9CA3AF';
   const rankDef      = rankDefs.find(r=>r.rank_name===rank);
@@ -100,6 +100,19 @@ export default function Dashboard() {
   const trainingDone = progress.filter(p=>p.completed).length;
   const trainingPct  = training.length ? Math.round((trainingDone/training.length)*100) : 0;
   const shopFiltered = products.filter(p=>sizeFilter==='all'||(sizeFilter==='250g'&&p.weight_g==250)||(sizeFilter==='1kg'&&p.weight_g==1000));
+
+  // Earnings — group ledger by month
+  const byMonth = {};
+  ledger.forEach(l=>{
+    const mo = (l.period||l.created_at||'').slice(0,7)||'Unknown';
+    if(!byMonth[mo]) byMonth[mo]={income:0,redemptions:0,entries:[]};
+    const amt = Number(l.amount||0);
+    if(['redemption','expiry'].includes(l.entry_type)) byMonth[mo].redemptions+=amt;
+    else byMonth[mo].income+=amt;
+    byMonth[mo].entries.push(l);
+  });
+  const earningMonths = Object.keys(byMonth).sort().reverse();
+  const thisMonthIncome = earningMonths.length>0 ? (byMonth[earningMonths[0]]?.income||0) : 0;
 
   function addCart(id,delta) {
     setCart(c=>({...c,[id]:Math.max(0,(c[id]||0)+delta)}));
@@ -592,26 +605,12 @@ export default function Dashboard() {
             </>}
 
             {/* ── EARNINGS ── */}
-            {tab==='earnings'&&(()=>{
-              // Group ledger by month
-              const byMonth = {};
-              ledger.forEach(l=>{
-                const mo = l.period||l.created_at?.slice(0,7)||'Unknown';
-                if(!byMonth[mo]) byMonth[mo]={income:0,redemptions:0,entries:[]};
-                const amt = Number(l.amount||0);
-                if(['redemption','expiry'].includes(l.entry_type)) byMonth[mo].redemptions+=amt;
-                else byMonth[mo].income+=amt;
-                byMonth[mo].entries.push(l);
-              });
-              const months = Object.keys(byMonth).sort().reverse();
-              const thisMonth = months[0]||new Date().toISOString().slice(0,7);
-              const thisIncome = byMonth[thisMonth]?.income||0;
-              return(<>
+            {tab==='earnings'&&<>
               {/* Monthly KPIs */}
               <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',borderRadius:'var(--r)',padding:'22px 24px',color:'#fff',boxShadow:'var(--shadow-md)',position:'relative',overflow:'hidden'}}>
                 <div style={{position:'absolute',width:120,height:120,borderRadius:'50%',background:'rgba(255,255,255,0.06)',top:-30,right:-30}}/>
                 <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,0.65)',marginBottom:6}}>This month · {new Date().toLocaleDateString('en-ZA',{month:'long',year:'numeric'})}</div>
-                <div style={{fontSize:40,fontWeight:900,letterSpacing:'-0.03em',lineHeight:1,marginBottom:4}}>{Rz(thisIncome)}</div>
+                <div style={{fontSize:40,fontWeight:900,letterSpacing:'-0.03em',lineHeight:1,marginBottom:4}}>{Rz(thisMonthIncome)}</div>
                 <div style={{fontSize:13,color:'rgba(255,255,255,0.7)'}}>Pool share: {rankDef?.pool_pct||0}% · Rank bonus: {Rz(rankDef?.monthly_bonus||0)}</div>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:12}}>
@@ -629,24 +628,24 @@ export default function Dashboard() {
               </div>
 
               {/* Monthly breakdown */}
-              {months.length===0&&<div style={{textAlign:'center',padding:48,color:'var(--text-muted)'}}>
+              {earningMonths.length===0&&<div style={{textAlign:'center',padding:48,color:'var(--text-muted)'}}>
                 <div style={{fontSize:36,marginBottom:10}}>💰</div>
                 <div style={{fontWeight:600}}>No earnings yet</div>
                 <div style={{fontSize:13,marginTop:6}}>Commission is paid monthly once your rank qualifies</div>
               </div>}
-              {months.map(mo=>(
+              {earningMonths.map(mo=>(
                 <div key={mo} className="card card-flush" style={{overflow:'hidden'}}>
                   <div style={{padding:'14px 18px',background:'var(--surface-1)',borderBottom:'1px solid var(--border)',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
                     <div>
                       <div style={{fontWeight:700,fontSize:14,color:'var(--text-h)'}}>{new Date(mo+'-01').toLocaleDateString('en-ZA',{month:'long',year:'numeric'})}</div>
-                      <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{byMonth[mo].entries.length} transaction{byMonth[mo].entries.length!==1?'s':''}</div>
+                      <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{(byMonth[mo]?.entries||[]).length} transaction{(byMonth[mo]?.entries||[]).length!==1?'s':''}</div>
                     </div>
                     <div style={{textAlign:'right'}}>
-                      <div style={{fontSize:20,fontWeight:800,color:'var(--primary)'}}>{Rz(byMonth[mo].income)}</div>
-                      {byMonth[mo].redemptions>0&&<div style={{fontSize:11,color:'var(--red-text)'}}>−{Rz(byMonth[mo].redemptions)} redeemed</div>}
+                      <div style={{fontSize:20,fontWeight:800,color:'var(--primary)'}}>{Rz(byMonth[mo]?.income||0)}</div>
+                      {(byMonth[mo]?.redemptions||0)>0&&<div style={{fontSize:11,color:'var(--red-text)'}}>−{Rz(byMonth[mo]?.redemptions||0)} redeemed</div>}
                     </div>
                   </div>
-                  {byMonth[mo].entries.map(l=>(
+                  {(byMonth[mo]?.entries||[]).map(l=>(
                     <div key={l.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'11px 18px',borderBottom:'1px solid var(--border)'}}>
                       <div>
                         <div style={{fontSize:13,fontWeight:600,color:'var(--text-h)'}}>{l.note||l.entry_type?.replace(/_/g,' ')}</div>
@@ -673,7 +672,7 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            </>);})()}
+            </>}
 
             {/* ── LIFESTYLE ── */}
             {tab==='lifestyle'&&<>
