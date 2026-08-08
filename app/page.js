@@ -1,11 +1,18 @@
 'use client';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function Home() {
+  const [href, setHref] = useState('/login');
+
   useEffect(() => {
     const id   = localStorage.getItem('ohmi_member_id');
     const role = localStorage.getItem('ohmi_role');
-    if (id) window.location.href = role === 'admin' ? '/admin' : '/dashboard';
+    if (id) {
+      const dest = role === 'admin' ? '/admin' : '/dashboard';
+      window.location.href = dest;
+    } else {
+      setHref('/login');
+    }
   }, []);
 
   return (
@@ -20,7 +27,7 @@ export default function Home() {
       justifyContent: 'flex-end',
       paddingBottom: '10vh',
     }}>
-      <a href="/dashboard" style={{
+      <a href={href} style={{
         display: 'block', textAlign: 'center',
         background: 'linear-gradient(135deg,#6366F1,#0EA5E9)',
         color: '#fff', padding: '16px 48px',
