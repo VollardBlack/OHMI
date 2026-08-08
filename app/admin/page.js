@@ -5,16 +5,20 @@ import { supabase } from '@/lib/supabase';
 import BinaryTree from '@/app/components/BinaryTree';
 
 const TABS = [
-  { id: 'dashboard', icon: 'ti-layout-dashboard', tip: 'Dashboard' },
-  { id: 'members',   icon: 'ti-users',            tip: 'Members' },
-  { id: 'network',   icon: 'ti-binary-tree-2',    tip: 'Binary Tree' },
-  { id: 'orders',    icon: 'ti-shopping-bag',     tip: 'Orders' },
-  { id: 'billing',   icon: 'ti-coin',             tip: 'Billing' },
-  { id: 'ledger',    icon: 'ti-file-invoice',     tip: 'Ledger' },
-  { id: 'calc',      icon: 'ti-calculator',       tip: 'Profit Calc' },
-  { id: 'foundation',icon: 'ti-heart',            tip: 'Foundation' },
-  { id: 'products',  icon: 'ti-package',         tip: 'Products' },
-  { id: 'travel',    icon: 'ti-plane',           tip: 'Travel Bookings' },
+  { id: 'dashboard',  icon: 'ti-layout-dashboard', tip: 'Dashboard' },
+  { id: 'members',    icon: 'ti-users',             tip: 'Members' },
+  { id: 'network',    icon: 'ti-binary-tree-2',     tip: 'Binary Tree' },
+  { id: 'welcome',    icon: 'ti-package',           tip: 'Welcome Orders' },
+  { id: 'orders',     icon: 'ti-shopping-bag',      tip: 'Orders' },
+  { id: 'invoices',   icon: 'ti-file-invoice',      tip: 'Invoices' },
+  { id: 'payouts',    icon: 'ti-cash',              tip: 'Payouts' },
+  { id: 'subbilling', icon: 'ti-credit-card',       tip: 'Subscriptions' },
+  { id: 'products',   icon: 'ti-coffee',            tip: 'Products' },
+  { id: 'travel',     icon: 'ti-plane',             tip: 'Travel' },
+  { id: 'wholesale',  icon: 'ti-building-store',    tip: 'Wholesale' },
+  { id: 'edutrain',   icon: 'ti-school',            tip: 'Training' },
+  { id: 'calc',       icon: 'ti-calculator',        tip: 'Profit Calc' },
+  { id: 'foundation', icon: 'ti-heart',             tip: 'Foundation' },
 ];
 
 const MN = n => n ? String(n).padStart(5,'0') : '—';
@@ -787,7 +791,7 @@ export default function Admin() {
           </div>
           <nav className="sidebar-nav">
             <div className="sidebar-section">Overview</div>
-            {[TABS[0],TABS[1],TABS[2]].map(t=>(
+            {TABS.filter(t=>['dashboard','members','network'].includes(t.id)).map(t=>(
               <button key={t.id} className={`sidebar-item${tab===t.id?' on':''}`} onClick={()=>setTab(t.id)}>
                 <i className={`ti ${t.icon}`} aria-hidden="true"/>
                 {t.tip}
@@ -795,22 +799,29 @@ export default function Admin() {
               </button>
             ))}
             <div className="sidebar-section">Commerce</div>
-            {[TABS[3],TABS[4],TABS[5]].map(t=>(
+            {TABS.filter(t=>['welcome','orders','invoices'].includes(t.id)).map(t=>(
               <button key={t.id} className={`sidebar-item${tab===t.id?' on':''}`} onClick={()=>setTab(t.id)}>
                 <i className={`ti ${t.icon}`} aria-hidden="true"/>
                 {t.tip}
                 {t.id==='orders'&&pendingOrders.length>0&&<span className="s-badge">{pendingOrders.length}</span>}
               </button>
             ))}
-            <div className="sidebar-section">Tools</div>
-            {[TABS[6],TABS[7]].map(t=>(
+            <div className="sidebar-section">Finance</div>
+            {TABS.filter(t=>['payouts','subbilling'].includes(t.id)).map(t=>(
               <button key={t.id} className={`sidebar-item${tab===t.id?' on':''}`} onClick={()=>setTab(t.id)}>
                 <i className={`ti ${t.icon}`} aria-hidden="true"/>
                 {t.tip}
               </button>
             ))}
-            <div className="sidebar-section">Catalogue</div>
-            {[TABS[8],TABS[9],TABS[10],TABS[11],TABS[12],TABS[13],TABS[14],TABS[15]].map(t=>(
+            <div className="sidebar-section">Platform</div>
+            {TABS.filter(t=>['products','travel','wholesale','edutrain'].includes(t.id)).map(t=>(
+              <button key={t.id} className={`sidebar-item${tab===t.id?' on':''}`} onClick={()=>setTab(t.id)}>
+                <i className={`ti ${t.icon}`} aria-hidden="true"/>
+                {t.tip}
+              </button>
+            ))}
+            <div className="sidebar-section">Tools</div>
+            {TABS.filter(t=>['calc','foundation'].includes(t.id)).map(t=>(
               <button key={t.id} className={`sidebar-item${tab===t.id?' on':''}`} onClick={()=>setTab(t.id)}>
                 <i className={`ti ${t.icon}`} aria-hidden="true"/>
                 {t.tip}
@@ -946,7 +957,7 @@ export default function Admin() {
                         ['ti-users',     'Members',     ()=>setTab('members')],
                         ['ti-binary-tree-2','Tree',     ()=>setTab('network')],
                         ['ti-shopping-bag','Orders',    ()=>setTab('orders')],
-                        ['ti-coin',      'Billing',     ()=>setTab('billing')],
+                        ['ti-coin',      'Subscriptions',()=>setTab('subbilling')],
                         ['ti-package',   'Products',    ()=>setTab('products')],
                         ['ti-plane',     'Travel',      ()=>setTab('travel')],
                       ].map(([icon,label,fn])=>(
@@ -1268,7 +1279,7 @@ export default function Admin() {
             </>}
 
             {/* ── LEDGER ── */}
-            {tab === 'ledger' && <>
+            {tab === 'ledger_old' && <>
               <div className="card card-flush">
                 <div style={{ padding:'14px 20px',borderBottom:'1px solid var(--border)' }}><span className="section-label">Member balances</span></div>
                 <table className="data-table">
@@ -1499,7 +1510,7 @@ export default function Admin() {
             </>}
 
             {/* ── SUBSCRIPTIONS ── */}
-            {tab==='billing'&&<>
+            {tab==='subbilling'&&<>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:12}}>
                 <div>
                   <div className="section-title">Subscription Billing</div>
