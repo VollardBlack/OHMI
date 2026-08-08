@@ -1,1092 +1,487 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-// API-based search — keys are server-side only
-const DESTINATIONS = ['Cape Town','Johannesburg','Durban','Garden Route','Kruger','Zanzibar','Mauritius','Dubai','Hermanus','Knysna','Stellenbosch','Port Elizabeth'];
 
-async function searchHotelsAPI(q, checkIn, checkOut, guests) {
-  const res = await fetch(`/api/search/hotels?q=${encodeURIComponent(q)}&check_in=${checkIn}&check_out=${checkOut}&adults=${guests}`);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Search failed');
-  return { hotels: data.hotels || [], mock: data.mock || false };
-}
+const Rz = n => 'R\u202f' + Number(n||0).toLocaleString('en-ZA',{maximumFractionDigits:0});
+const dateIn = days => { const d=new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); };
+const fmtDate = d => d ? new Date(d).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}) : '—';
 
-async function searchFlightsAPI(origin, destination, date, returnDate, adults, cabin) {
-  const params = new URLSearchParams({ origin, destination, date, adults, cabin: cabin || 'ECONOMY' });
-  if (returnDate) params.set('return_date', returnDate);
-  const res = await fetch(`/api/search/flights?${params}`);
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Search failed');
-  return { flights: data.flights || [], mock: data.mock || false };
-}
-
-const Rz = n => 'R\u202f' + Number(n||0).toLocaleString('en-ZA',{minimumFractionDigits:0,maximumFractionDigits:0});
-const Dz = d => d ? new Date(d).toLocaleDateString('en-ZA',{day:'numeric',month:'short',year:'numeric'}) : '—';
-const Stars = ({n}) => <span style={{color:'var(--amber)',fontSize:11}}>{Array(Number(n)||0).fill('★').join('')}</span>;
-
-// ── Today + offsets ───────────────────────────────────────
-const dateIn = (days) => {
-  const d = new Date(); d.setDate(d.getDate()+days);
-  return d.toISOString().slice(0,10);
-};
-
-// ── SA airports ───────────────────────────────────────────
-const AIRPORTS = [
-  'Cape Town (CPT)','Johannesburg (JNB)','Durban (DUR)',
-  'Port Elizabeth (GQQ)','George (GRJ)','East London (ELS)',
-  'Nairobi (NBO)','Dubai (DXB)','London Heathrow (LHR)',
-  'Mauritius (MRU)','Zanzibar (ZNZ)','Harare (HRE)',
+// Curated OHMI destinations — hand-picked, aspirational
+const DESTINATIONS = [
+  { id:'cpt',  name:'Cape Town',      country:'South Africa', tag:'Home Ground',  img:'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=700&q=80', from:'R1,200',   desc:'Table Mountain · V&A Waterfront · Winelands' },
+  { id:'jnb',  name:'Johannesburg',   country:'South Africa', tag:'Business Hub', img:'https://images.unsplash.com/photo-1577948000111-9c970dfe3743?w=700&q=80', from:'R950',    desc:'Sandton · Soweto · Cradle of Humankind' },
+  { id:'mru',  name:'Mauritius',      country:'Indian Ocean', tag:'Beach Escape', img:'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=700&q=80', from:'R4,200',  desc:'White beaches · Turquoise lagoons · Luxury resorts' },
+  { id:'znz',  name:'Zanzibar',       country:'Tanzania',     tag:'Island Life',  img:'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?w=700&q=80', from:'R3,800',  desc:'Stone Town · Spice routes · Pristine beaches' },
+  { id:'dxb',  name:'Dubai',          country:'UAE',          tag:'City of Gold', img:'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=700&q=80', from:'R5,500',  desc:'Burj Khalifa · Desert safari · World-class shopping' },
+  { id:'nbo',  name:'Nairobi',        country:'Kenya',        tag:'Safari Gateway',img:'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=700&q=80', from:'R2,900', desc:'Masai Mara gateway · Karen Blixen · Giraffe Centre' },
+  { id:'lhr',  name:'London',         country:'United Kingdom',tag:'World Class', img:'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=700&q=80', from:'R12,000', desc:'West End · Museums · Royal palaces · Premier football' },
+  { id:'grj',  name:'Garden Route',   country:'South Africa', tag:'Road Trip',    img:'https://images.unsplash.com/photo-1539650116574-8efeb43e2750?w=700&q=80', from:'R1,500',  desc:'Knysna · Plettenberg Bay · Tsitsikamma · Mossel Bay' },
 ];
 
-const CAR_LOCATIONS = [
-  'Cape Town Airport','Cape Town City Centre','Stellenbosch',
-  'Hermanus','Johannesburg Airport','Sandton','Durban Airport',
-  'George Airport','Knysna','Franschhoek',
-];
+const AIRPORTS = ['CPT – Cape Town','JNB – Johannesburg','DUR – Durban','PLZ – Port Elizabeth','GRJ – George','NBO – Nairobi','DXB – Dubai','LHR – London Heathrow','MRU – Mauritius','ZNZ – Zanzibar','MLA – Malta','CDG – Paris'];
 
-const CAR_CATEGORIES = [
-  'Economy (e.g. VW Polo)','Compact (e.g. Toyota Corolla)',
-  'Compact SUV (e.g. Hyundai Tucson)','Mid-size SUV (e.g. Ford Escape)',
-  'Large SUV (e.g. Toyota Land Cruiser)','Luxury (e.g. BMW 3 Series)',
-  'Minivan (7-8 seater)','Bakkie / 4x4 (Safari capable)',
-];
-
-// ── Hotel card ────────────────────────────────────────────
-function HotelCard({h, nights, onSelect}) {
-  return (
-    <div className="hotel-card" onClick={()=>onSelect(h)}>
-      <div style={{position:'relative'}}>
-        <img src={h.image} alt={h.name} className="hotel-img"
-          onError={e=>{e.target.style.background='#1a1a2e';e.target.style.minHeight=160;}}/>
-        <div style={{position:'absolute',top:10,left:10}}>
-          <span className="pill pill-amber" style={{background:'rgba(0,0,0,0.55)',color:'#F59E0B',border:'1px solid rgba(245,158,11,0.4)'}}>
-            <Stars n={h.stars}/> {h.stars}-star
-          </span>
-        </div>
-        <div style={{position:'absolute',top:10,right:10,background:'var(--primary)',color:'#fff',borderRadius:'var(--r-xs)',padding:'4px 9px',fontSize:13,fontWeight:800}}>
-          {h.rating}
-        </div>
-      </div>
-      <div className="hotel-body">
-        <div className="hotel-name">{h.name}</div>
-        <div className="hotel-loc"><i className="ti ti-map-pin" aria-hidden="true" style={{fontSize:11}}/>{h.location}</div>
-        <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:10}}>
-          {(h.amenities||[]).slice(0,3).map(a=>(
-            <span key={a} style={{fontSize:10,color:'var(--text-sub)',background:'var(--surface-2)',borderRadius:'var(--r-full)',padding:'2px 8px',border:'1px solid var(--border)'}}>{a}</span>
-          ))}
-        </div>
-        <div style={{display:'flex',alignItems:'flex-end',justifyContent:'space-between'}}>
-          <div>
-            <span className="hotel-price">{Rz(h.price_per_night)}</span>
-            <span style={{fontSize:11,color:'var(--text-muted)'}}>/night · {Rz((h.price_per_night||0)*(nights||1))} total</span>
-          </div>
-          <button className="btn btn-primary btn-xs" onClick={e=>{e.stopPropagation();onSelect(h);}}>Book →</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Hotel booking flow ────────────────────────────────────
-function HotelBooking({hotel, nights, checkIn, checkOut, guests, ptBal, me, onBack, onDone, flash}) {
-  const [room, setRoom] = useState(hotel.room_types?.[0]);
-  const [step, setStep] = useState('detail');
-  const [pts, setPts] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [ref, setRef] = useState('');
-  const total = (room?.price||0) * nights;
-  const maxPts = Math.min(ptBal, total);
-  const cash = Math.max(0, total - pts);
-
-  async function confirm() {
-    setBusy(true);
-    const bookRef = 'VB-H-' + Date.now().toString(36).toUpperCase();
-    await supabase.from('travel_bookings').insert({
-      member_id:me.id, booking_ref:bookRef,
-      hotel_id:hotel.id, hotel_name:hotel.name, hotel_location:hotel.location,
-      room_name:room?.name||'Standard', check_in:checkIn, check_out:checkOut,
-      nights, guests, total_cost:total, points_used:pts, cash_due:cash,
-      status:cash===0?'confirmed':'pending',
-      payment_status:pts>0&&cash===0?'points_only':pts>0?'partial':'pending',
-      provider:'Vollard Black',
-    });
-    if(pts>0) await supabase.from('lifestyle_ledger').insert({
-      member_id:me.id,entry_type:'redemption',points:pts,
-      note:`Hotel: ${hotel.name} ${bookRef}`,period:new Date().toISOString().slice(0,7)+'-01',
-    });
-    setBusy(false); setRef(bookRef); onDone();
-  }
-
-  if(ref) return (
-    <div>
-      <button className="btn btn-ghost btn-sm" style={{marginBottom:14}} onClick={onBack}>← Search more</button>
-      <div style={{background:'linear-gradient(135deg,#10B981,#0EA5E9)',borderRadius:'var(--r-lg)',padding:'28px 24px',color:'#fff',textAlign:'center'}}>
-        <div style={{fontSize:40,marginBottom:12}}>🏨</div>
-        <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',opacity:0.7,marginBottom:6}}>Booking {cash===0?'confirmed':'submitted'}</div>
-        <div style={{fontSize:22,fontWeight:800,marginBottom:4,letterSpacing:'-0.02em'}}>{hotel.name}</div>
-        <div style={{fontSize:13,opacity:0.8,marginBottom:16}}>{Dz(checkIn)} → {Dz(checkOut)} · {nights} nights</div>
-        <div style={{background:'rgba(0,0,0,0.15)',borderRadius:'var(--r-sm)',padding:'12px 16px',textAlign:'left',marginBottom:16}}>
-          <div style={{fontSize:11,opacity:0.65,marginBottom:4,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase'}}>Ref</div>
-          <div style={{fontFamily:'monospace',fontSize:14,fontWeight:700}}>{ref}</div>
-        </div>
-        {cash>0&&<div style={{background:'rgba(0,0,0,0.15)',borderRadius:'var(--r-sm)',padding:'12px 16px',textAlign:'left',marginBottom:16,fontSize:12,lineHeight:1.8}}>
-          <div style={{fontWeight:700,opacity:0.8,marginBottom:4}}>EFT Payment</div>
-          <div>FNB · OHMI Coffee Co. (Pty) Ltd</div>
-          <div>Amount: <strong>{Rz(cash)}</strong> · Ref: <strong>{ref}</strong></div>
-        </div>}
-        <button onClick={onBack} style={{background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.3)',borderRadius:'var(--r-full)',padding:'10px 24px',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Search more</button>
-      </div>
-    </div>
-  );
-
-  return (
-    <div>
-      <button className="btn btn-ghost btn-sm" style={{marginBottom:14}} onClick={onBack}>← Results</button>
-      <div style={{borderRadius:'var(--r)',overflow:'hidden',height:200,marginBottom:14,background:'#111'}}>
-        <img src={hotel.images?.[0]||hotel.image} alt={hotel.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-      </div>
-      <div style={{fontSize:20,fontWeight:800,letterSpacing:'-0.02em',color:'var(--text-h)',marginBottom:4}}>{hotel.name}</div>
-      <div style={{fontSize:12,color:'var(--text-muted)',marginBottom:12}}>{hotel.address}</div>
-      {step==='detail'&&<>
-        <div className="card" style={{marginBottom:12}}>
-          <div className="section-label" style={{marginBottom:12}}>Select room · {nights} night{nights!==1?'s':''}</div>
-          {(hotel.room_types||[{id:'std',name:'Standard Room',price:hotel.price_per_night,beds:'Double bed',capacity:2}]).map(r=>(
-            <div key={r.id} onClick={()=>setRoom(r)}
-              style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:'1px solid var(--border)',cursor:'pointer'}}>
-              <div style={{display:'flex',alignItems:'center',gap:10}}>
-                <div style={{width:18,height:18,borderRadius:'50%',border:`2px solid ${room?.id===r.id?'var(--primary)':'var(--border-md)'}`,background:room?.id===r.id?'var(--primary)':'transparent',flexShrink:0}}/>
-                <div>
-                  <div style={{fontWeight:600,fontSize:13}}>{r.name}</div>
-                  <div style={{fontSize:11,color:'var(--text-muted)'}}>{r.beds} · max {r.capacity}</div>
-                </div>
-              </div>
-              <div style={{textAlign:'right'}}>
-                <div style={{fontSize:18,fontWeight:800,letterSpacing:'-0.01em'}}>{Rz(r.price)}<span style={{fontSize:11,fontWeight:400,color:'var(--text-muted)'}}>/night</span></div>
-                <div style={{fontSize:11,color:'var(--text-muted)'}}>{Rz(r.price*nights)} total</div>
-              </div>
-            </div>
-          ))}
-        </div>
-        <button className="btn btn-primary btn-full" onClick={()=>setStep('book')}>Book {room?.name} →</button>
-      </>}
-      {step==='book'&&<>
-        {ptBal>0&&<div className="card card-bordered" style={{marginBottom:12}}>
-          <div className="section-label" style={{marginBottom:8}}>Apply lifestyle points</div>
-          <div style={{fontSize:12,color:'var(--text-sub)',marginBottom:8}}>Available: <strong style={{color:'var(--primary)'}}>{ptBal.toLocaleString()} pts = {Rz(ptBal)}</strong></div>
-          <input type="range" min={0} max={maxPts} step={50} value={pts} onChange={e=>setPts(Number(e.target.value))} style={{width:'100%',accentColor:'var(--primary)',marginBottom:8}}/>
-          <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
-            <span>Using: <strong style={{color:'var(--primary)'}}>{Rz(pts)}</strong></span>
-            <span>Cash due: <strong style={{color:cash>0?'var(--amber)':'var(--green-text)'}}>{cash>0?Rz(cash):'Fully covered ✓'}</strong></span>
-          </div>
-        </div>}
-        <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',borderRadius:'var(--r)',padding:'16px 20px',marginBottom:12,color:'#fff'}}>
-          <div style={{fontSize:10,opacity:0.65,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:4}}>Total</div>
-          <div style={{fontSize:28,fontWeight:800,letterSpacing:'-0.02em'}}>{Rz(total)}</div>
-          {pts>0&&<div style={{fontSize:12,opacity:0.7,marginTop:4}}>{Rz(pts)} points · {Rz(cash)} cash</div>}
-        </div>
-        <div style={{display:'flex',gap:10}}>
-          <button className="btn btn-ghost" onClick={()=>setStep('detail')}>← Back</button>
-          <button className="btn btn-primary" style={{flex:1}} disabled={busy} onClick={confirm}>
-            {busy?'Confirming…':cash>0?`Confirm — EFT ${Rz(cash)}`:'Confirm booking'}
-          </button>
-        </div>
-      </>}
-    </div>
-  );
-}
-
-// ── Flight request form ───────────────────────────────────
-function FlightRequest({me, ptBal, onDone, flash}) {
-  const [f, setF] = useState({
-    trip_type:'return', from:'', to:'', depart_date:dateIn(14),
-    return_date:dateIn(21), passengers:'1', cabin_class:'Economy', special_requests:'',
-  });
-  const [pts, setPts] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [ref, setRef] = useState('');
-  const set = (k,v) => setF(p=>({...p,[k]:v}));
-
-  async function submit() {
-    if(!f.from||!f.to||!f.depart_date){flash('Please fill in origin, destination and date');return;}
-    setBusy(true);
-    const bookRef = 'VB-F-' + Date.now().toString(36).toUpperCase();
-    await supabase.from('travel_requests').insert({
-      member_id:me.id, booking_ref:bookRef, type:'flight',
-      flight_from:f.from, flight_to:f.to,
-      depart_date:f.depart_date,
-      return_date:f.trip_type==='return'?f.return_date:null,
-      trip_type:f.trip_type, passengers:Number(f.passengers),
-      cabin_class:f.cabin_class, special_requests:f.special_requests||null,
-      points_to_use:pts, status:'pending',
-    });
-    setBusy(false); setRef(bookRef);
-  }
-
-  if(ref) return (
-    <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',borderRadius:'var(--r-lg)',padding:'28px 24px',color:'#fff',textAlign:'center'}}>
-      <div style={{fontSize:48,marginBottom:12}}>✈️</div>
-      <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',opacity:0.7,marginBottom:8}}>Flight request submitted</div>
-      <div style={{fontSize:22,fontWeight:800,marginBottom:6,letterSpacing:'-0.02em'}}>{f.from} → {f.to}</div>
-      <div style={{fontSize:13,opacity:0.8,marginBottom:20}}>{Dz(f.depart_date)}{f.trip_type==='return'?` · Return ${Dz(f.return_date)}`:''} · {f.passengers} pax · {f.cabin_class}</div>
-      <div style={{background:'rgba(0,0,0,0.15)',borderRadius:'var(--r-sm)',padding:'14px 16px',textAlign:'left',marginBottom:16,fontSize:13}}>
-        <div style={{fontWeight:700,opacity:0.8,marginBottom:8}}>What happens next</div>
-        <div style={{opacity:0.8,lineHeight:1.8}}>
-          1. Vollard Black receives your request (ref: <strong>{ref}</strong>)<br/>
-          2. We source the best available flights<br/>
-          3. You receive a quote within 24 hours<br/>
-          4. Confirm and pay via EFT to lock the booking
-        </div>
-      </div>
-      {pts>0&&<div style={{background:'rgba(255,255,255,0.1)',borderRadius:'var(--r-sm)',padding:'10px 16px',marginBottom:16,fontSize:12,opacity:0.9}}>
-        {pts.toLocaleString()} lifestyle points reserved for offset
-      </div>}
-      <button onClick={onDone} style={{background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.3)',borderRadius:'var(--r-full)',padding:'10px 24px',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Done</button>
-    </div>
-  );
-
-  return (
-    <div>
-      <div style={{background:'linear-gradient(135deg,rgba(99,102,241,0.08),rgba(14,165,233,0.06))',border:'1px solid var(--primary-border)',borderRadius:'var(--r)',padding:'14px 18px',marginBottom:16,display:'flex',gap:12,alignItems:'flex-start'}}>
-        <div style={{fontSize:22,flexShrink:0}}>✈️</div>
-        <div>
-          <div style={{fontWeight:700,color:'var(--primary)',fontSize:14,marginBottom:3}}>Flight concierge service</div>
-          <div style={{fontSize:12,color:'var(--text-sub)',lineHeight:1.7}}>
-            Submit your flight details and Vollard Black will source the best available options across all airlines. You'll receive a personalised quote within 24 hours and can offset the cost with lifestyle points.
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        {/* Trip type */}
-        <div className="field">
-          <label className="field-label">Trip type</label>
-          <div style={{display:'flex',gap:8}}>
-            {['return','oneway'].map(t=>(
-              <button key={t} onClick={()=>set('trip_type',t)} className={f.trip_type===t?'btn btn-primary btn-sm':'btn btn-ghost btn-sm'} style={{borderRadius:'var(--r-full)',flex:1}}>
-                {t==='return'?'Return':'One way'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Route */}
-        <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',gap:8,alignItems:'end',marginBottom:14}}>
-          <div className="field" style={{marginBottom:0}}>
-            <label className="field-label">From</label>
-            <input className="field-input" value={f.from} onChange={e=>set('from',e.target.value)} placeholder="City or airport code" list="airports-from"/>
-            <datalist id="airports-from">{AIRPORTS.map(a=><option key={a} value={a}/>)}</datalist>
-          </div>
-          <button onClick={()=>set('from',f.to)||set('to',f.from)}
-            style={{height:44,width:40,background:'var(--primary-bg)',border:'1px solid var(--primary-border)',borderRadius:'var(--r-full)',cursor:'pointer',fontSize:16,color:'var(--primary)',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:0}}>
-            ⇄
-          </button>
-          <div className="field" style={{marginBottom:0}}>
-            <label className="field-label">To</label>
-            <input className="field-input" value={f.to} onChange={e=>set('to',e.target.value)} placeholder="City or airport code" list="airports-to"/>
-            <datalist id="airports-to">{AIRPORTS.map(a=><option key={a} value={a}/>)}</datalist>
-          </div>
-        </div>
-
-        {/* Dates */}
-        <div style={{display:'grid',gridTemplateColumns:`1fr${f.trip_type==='return'?' 1fr':''}`,gap:10,marginBottom:14}}>
-          <div className="field" style={{marginBottom:0}}>
-            <label className="field-label">Departure date</label>
-            <input className="field-input" type="date" value={f.depart_date} min={dateIn(1)} onChange={e=>set('depart_date',e.target.value)}/>
-          </div>
-          {f.trip_type==='return'&&<div className="field" style={{marginBottom:0}}>
-            <label className="field-label">Return date</label>
-            <input className="field-input" type="date" value={f.return_date} min={f.depart_date} onChange={e=>set('return_date',e.target.value)}/>
-          </div>}
-        </div>
-
-        {/* Pax + class */}
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
-          <div className="field" style={{marginBottom:0}}>
-            <label className="field-label">Passengers</label>
-            <select className="field-input" value={f.passengers} onChange={e=>set('passengers',e.target.value)}>
-              {[1,2,3,4,5,6,7,8].map(n=><option key={n} value={n}>{n} passenger{n!==1?'s':''}</option>)}
-            </select>
-          </div>
-          <div className="field" style={{marginBottom:0}}>
-            <label className="field-label">Cabin class</label>
-            <select className="field-input" value={f.cabin_class} onChange={e=>set('cabin_class',e.target.value)}>
-              {['Economy','Premium Economy','Business','First Class'].map(c=><option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-        </div>
-
-        {/* Special requests */}
-        <div className="field" style={{marginBottom:14}}>
-          <label className="field-label">Special requests (optional)</label>
-          <textarea className="field-input" rows={2} value={f.special_requests} onChange={e=>set('special_requests',e.target.value)} placeholder="Preferred airline, meal requirements, extra baggage, seating preferences…" style={{resize:'vertical'}}/>
-        </div>
-
-        {/* Points */}
-        {ptBal>0&&<div style={{padding:'14px',background:'var(--primary-bg)',borderRadius:'var(--r-sm)',border:'1px solid var(--primary-border)',marginBottom:14}}>
-          <div className="section-label" style={{marginBottom:8}}>Reserve lifestyle points</div>
-          <div style={{fontSize:12,color:'var(--text-sub)',marginBottom:8}}>You have <strong style={{color:'var(--primary)'}}>{ptBal.toLocaleString()} pts = {Rz(ptBal)}</strong> · reserve some to offset the quote when it arrives</div>
-          <input type="range" min={0} max={ptBal} step={100} value={pts} onChange={e=>setPts(Number(e.target.value))} style={{width:'100%',accentColor:'var(--primary)',marginBottom:6}}/>
-          <div style={{fontSize:12,color:'var(--text-sub)'}}>{pts>0?<><strong style={{color:'var(--primary)'}}>{pts.toLocaleString()} pts ({Rz(pts)})</strong> reserved</>:'No points reserved yet'}</div>
-        </div>}
-
-        <button className="btn btn-primary btn-full" disabled={busy||!f.from||!f.to} onClick={submit} style={{fontSize:14,padding:'13px'}}>
-          {busy?'Submitting…':'Submit flight request →'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Car request form ──────────────────────────────────────
-function CarRequest({me, ptBal, onDone, flash}) {
-  const [f, setF] = useState({
-    location:'', pickup:dateIn(7), dropoff:dateIn(10), category:'Compact SUV (e.g. Hyundai Tucson)', special_requests:'',
-  });
-  const [pts, setPts] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [ref, setRef] = useState('');
-  const set = (k,v) => setF(p=>({...p,[k]:v}));
-  const days = Math.max(1, Math.round((new Date(f.dropoff)-new Date(f.pickup))/86400000));
-
-  async function submit() {
-    if(!f.location||!f.pickup||!f.dropoff){flash('Please fill in location and dates');return;}
-    setBusy(true);
-    const bookRef = 'VB-C-' + Date.now().toString(36).toUpperCase();
-    await supabase.from('travel_requests').insert({
-      member_id:me.id, booking_ref:bookRef, type:'car',
-      car_location:f.location, car_pickup:f.pickup, car_dropoff:f.dropoff,
-      car_category:f.category, special_requests:f.special_requests||null,
-      points_to_use:pts, status:'pending',
-    });
-    setBusy(false); setRef(bookRef);
-  }
-
-  if(ref) return (
-    <div style={{background:'linear-gradient(135deg,#10B981,#6366F1)',borderRadius:'var(--r-lg)',padding:'28px 24px',color:'#fff',textAlign:'center'}}>
-      <div style={{fontSize:48,marginBottom:12}}>🚗</div>
-      <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',opacity:0.7,marginBottom:8}}>Car rental request submitted</div>
-      <div style={{fontSize:20,fontWeight:800,marginBottom:6}}>{f.category}</div>
-      <div style={{fontSize:13,opacity:0.8,marginBottom:20}}>{f.location} · {Dz(f.pickup)} → {Dz(f.dropoff)} · {days} day{days!==1?'s':''}</div>
-      <div style={{background:'rgba(0,0,0,0.15)',borderRadius:'var(--r-sm)',padding:'14px 16px',textAlign:'left',marginBottom:16,fontSize:13}}>
-        <div style={{fontWeight:700,opacity:0.8,marginBottom:8}}>What happens next</div>
-        <div style={{opacity:0.8,lineHeight:1.8}}>
-          1. Vollard Black receives your request (ref: <strong>{ref}</strong>)<br/>
-          2. We check availability from local suppliers<br/>
-          3. You receive a quote within 24 hours<br/>
-          4. Confirm and pay via EFT to secure the car
-        </div>
-      </div>
-      <button onClick={onDone} style={{background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.3)',borderRadius:'var(--r-full)',padding:'10px 24px',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>Done</button>
-    </div>
-  );
-
-  return (
-    <div>
-      <div style={{background:'linear-gradient(135deg,rgba(16,185,129,0.08),rgba(99,102,241,0.06))',border:'1px solid rgba(16,185,129,0.2)',borderRadius:'var(--r)',padding:'14px 18px',marginBottom:16,display:'flex',gap:12,alignItems:'flex-start'}}>
-        <div style={{fontSize:22,flexShrink:0}}>🚗</div>
-        <div>
-          <div style={{fontWeight:700,color:'var(--green-text)',fontSize:14,marginBottom:3}}>Car rental concierge</div>
-          <div style={{fontSize:12,color:'var(--text-sub)',lineHeight:1.7}}>
-            Tell us what you need and Vollard Black will source the best available vehicle from trusted suppliers. Quote delivered within 24 hours — offset with lifestyle points.
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <div className="field">
-          <label className="field-label">Pickup location</label>
-          <input className="field-input" value={f.location} onChange={e=>set('location',e.target.value)} placeholder="Airport, hotel or city" list="car-locations"/>
-          <datalist id="car-locations">{CAR_LOCATIONS.map(l=><option key={l} value={l}/>)}</datalist>
-        </div>
-
-        {/* Quick location chips */}
-        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14,marginTop:-8}}>
-          {CAR_LOCATIONS.slice(0,5).map(l=>(
-            <button key={l} onClick={()=>set('location',l)}
-              className={f.location===l?'btn btn-primary btn-xs':'btn btn-white btn-xs'}
-              style={{borderRadius:'var(--r-full)',fontSize:11}}>
-              {l}
-            </button>
-          ))}
-        </div>
-
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:14}}>
-          <div className="field" style={{marginBottom:0}}>
-            <label className="field-label">Pickup date</label>
-            <input className="field-input" type="date" value={f.pickup} min={dateIn(1)} onChange={e=>set('pickup',e.target.value)}/>
-          </div>
-          <div className="field" style={{marginBottom:0}}>
-            <label className="field-label">Return date</label>
-            <input className="field-input" type="date" value={f.dropoff} min={f.pickup} onChange={e=>set('dropoff',e.target.value)}/>
-          </div>
-        </div>
-
-        {f.pickup&&f.dropoff&&<div style={{fontSize:12,color:'var(--text-muted)',marginBottom:14,padding:'6px 12px',background:'var(--surface-1)',borderRadius:'var(--r-xs)',border:'1px solid var(--border)'}}>
-          📅 {days} day{days!==1?'s':''} rental
-        </div>}
-
-        <div className="field" style={{marginBottom:14}}>
-          <label className="field-label">Vehicle category</label>
-          <select className="field-input" value={f.category} onChange={e=>set('category',e.target.value)}>
-            {CAR_CATEGORIES.map(c=><option key={c} value={c}>{c}</option>)}
-          </select>
-        </div>
-
-        <div className="field" style={{marginBottom:14}}>
-          <label className="field-label">Special requests (optional)</label>
-          <textarea className="field-input" rows={2} value={f.special_requests} onChange={e=>set('special_requests',e.target.value)} placeholder="Automatic/manual, child seat, GPS, insurance preference…" style={{resize:'vertical'}}/>
-        </div>
-
-        {ptBal>0&&<div style={{padding:'14px',background:'rgba(16,185,129,0.06)',borderRadius:'var(--r-sm)',border:'1px solid rgba(16,185,129,0.2)',marginBottom:14}}>
-          <div className="section-label" style={{marginBottom:8}}>Reserve lifestyle points</div>
-          <div style={{fontSize:12,color:'var(--text-sub)',marginBottom:8}}>Available: <strong style={{color:'var(--green-text)'}}>{ptBal.toLocaleString()} pts = {Rz(ptBal)}</strong></div>
-          <input type="range" min={0} max={ptBal} step={100} value={pts} onChange={e=>setPts(Number(e.target.value))} style={{width:'100%',accentColor:'var(--green)',marginBottom:6}}/>
-          <div style={{fontSize:12,color:'var(--text-sub)'}}>{pts>0?<><strong style={{color:'var(--green-text)'}}>{pts.toLocaleString()} pts ({Rz(pts)})</strong> reserved</>:'No points reserved'}</div>
-        </div>}
-
-        <button className="btn btn-primary btn-full" disabled={busy||!f.location} onClick={submit} style={{fontSize:14,padding:'13px'}}>
-          {busy?'Submitting…':'Submit car rental request →'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-
-// ── Flight booking panel ──────────────────────────────────
-function FlightBookingPanel({flight, pax, ptBal, me, onBack, onDone, flash}) {
-  const [pts, setPts] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [ref, setRef] = useState('');
-  const total = flight.price;
-  const maxPts = Math.min(ptBal, total);
-  const cash = Math.max(0, total - pts);
-
-  async function confirm() {
-    setBusy(true);
-    const bookRef = 'VB-F-' + Date.now().toString(36).toUpperCase();
-    // Store as a travel_request so admin can process
-    await supabase.from('travel_requests').insert({
-      member_id:me.id, booking_ref:bookRef, type:'flight',
-      flight_from:flight.from.code, flight_to:flight.to.code,
-      depart_date:flight.depart_dt?.slice(0,10)||null,
-      return_date:flight.return_leg?flight.return_leg.departure?.slice(0,10):null,
-      trip_type:flight.return_leg?'return':'oneway',
-      passengers:pax, cabin_class:flight.cabin_class,
-      special_requests:`${flight.airline} ${flight.flight_number} · ${Rz(total)}`,
-      points_to_use:pts, quoted_amount:total, status:'quoted',
-    });
-    if(pts>0) await supabase.from('lifestyle_ledger').insert({
-      member_id:me.id,entry_type:'redemption',points:pts,
-      note:`Flight ${flight.from.code}→${flight.to.code} ${bookRef}`,
-      period:new Date().toISOString().slice(0,7)+'-01',
-    });
-    setBusy(false); setRef(bookRef);
-  }
-
-  if(ref) return (
-    <div>
-      <button className="btn btn-ghost btn-sm" style={{marginBottom:14}} onClick={onDone}>← My trips</button>
-      <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',borderRadius:'var(--r-lg)',padding:'28px 24px',color:'#fff',textAlign:'center'}}>
-        <div style={{fontSize:48,marginBottom:12}}>✈️</div>
-        <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.18em',textTransform:'uppercase',opacity:0.7,marginBottom:8}}>Flight booking submitted</div>
-        <div style={{fontSize:22,fontWeight:800,marginBottom:4}}>{flight.from.code} → {flight.to.code}</div>
-        <div style={{fontSize:13,opacity:0.8,marginBottom:20}}>{flight.airline} {flight.flight_number} · {pax} pax · {flight.cabin_class}</div>
-        <div style={{background:'rgba(0,0,0,0.15)',borderRadius:'var(--r-sm)',padding:'14px 16px',textAlign:'left',marginBottom:16,lineHeight:1.8,fontSize:13}}>
-          <div style={{fontWeight:700,opacity:0.8,marginBottom:6}}>What happens next</div>
-          <div style={{opacity:0.8}}>
-            1. Ref: <strong>{ref}</strong><br/>
-            2. Vollard Black confirms availability & issues tickets<br/>
-            3. Pay {Rz(cash)} via EFT to finalise<br/>
-            4. E-tickets sent to your email
-          </div>
-        </div>
-        <button onClick={onDone} style={{background:'rgba(255,255,255,0.2)',color:'#fff',border:'1px solid rgba(255,255,255,0.3)',borderRadius:'var(--r-full)',padding:'10px 24px',fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>View my trips</button>
-      </div>
-    </div>
-  );
-
-  return (
-    <div>
-      <button className="btn btn-ghost btn-sm" style={{marginBottom:14}} onClick={onBack}>← Results</button>
-      {/* Flight summary */}
-      <div className="card" style={{marginBottom:12}}>
-        <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
-          <div style={{width:44,height:44,borderRadius:'var(--r-sm)',background:'linear-gradient(135deg,#1e3a5f,#6366F1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-            <span style={{fontSize:11,fontWeight:800,color:'#fff'}}>{flight.airline_code}</span>
-          </div>
-          <div>
-            <div style={{fontWeight:700,fontSize:15}}>{flight.airline}</div>
-            <div style={{fontSize:12,color:'var(--text-muted)'}}>{flight.flight_number} · {flight.cabin_class} · {pax} passenger{pax!==1?'s':''}</div>
-          </div>
-        </div>
-        <div style={{background:'var(--surface-1)',borderRadius:'var(--r-sm)',padding:'16px',marginBottom:10}}>
-          <div style={{fontSize:9,fontWeight:700,color:'var(--text-dim)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>Outbound</div>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <div><div style={{fontFamily:'monospace',fontSize:24,fontWeight:800}}>{flight.departure}</div><div style={{fontSize:13,fontWeight:700,color:'var(--text-muted)'}}>{flight.from.code}</div></div>
-            <div style={{flex:1,textAlign:'center'}}><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:4}}>{flight.duration}</div><div style={{height:1.5,background:'var(--border-md)'}}/></div>
-            <div style={{textAlign:'right'}}><div style={{fontFamily:'monospace',fontSize:24,fontWeight:800}}>{flight.arrival}</div><div style={{fontSize:13,fontWeight:700,color:'var(--text-muted)'}}>{flight.to.code}</div></div>
-          </div>
-        </div>
-        {flight.return_leg&&<div style={{background:'rgba(99,102,241,0.05)',borderRadius:'var(--r-sm)',padding:'16px',border:'1px solid var(--primary-border)',marginBottom:10}}>
-          <div style={{fontSize:9,fontWeight:700,color:'var(--primary)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:10}}>Return</div>
-          <div style={{display:'flex',alignItems:'center',gap:8}}>
-            <div><div style={{fontFamily:'monospace',fontSize:24,fontWeight:800}}>{flight.return_leg.departure}</div><div style={{fontSize:13,fontWeight:700,color:'var(--text-muted)'}}>{flight.to.code}</div></div>
-            <div style={{flex:1,textAlign:'center'}}><div style={{fontSize:11,color:'var(--text-muted)',marginBottom:4}}>{flight.return_leg.duration}</div><div style={{height:1.5,background:'var(--border-md)'}}/></div>
-            <div style={{textAlign:'right'}}><div style={{fontFamily:'monospace',fontSize:24,fontWeight:800}}>{flight.return_leg.arrival}</div><div style={{fontSize:13,fontWeight:700,color:'var(--text-muted)'}}>{flight.from.code}</div></div>
-          </div>
-        </div>}
-        <div style={{fontSize:11,color:'var(--text-muted)',display:'flex',alignItems:'center',gap:5}}>
-          🧳 {flight.baggage}
-        </div>
-      </div>
-      {/* Points */}
-      {ptBal>0&&<div className="card card-bordered" style={{marginBottom:12}}>
-        <div className="section-label" style={{marginBottom:8}}>Apply lifestyle points</div>
-        <div style={{fontSize:12,color:'var(--text-sub)',marginBottom:8}}>Available: <strong style={{color:'var(--primary)'}}>{ptBal.toLocaleString()} pts = {Rz(ptBal)}</strong></div>
-        <input type="range" min={0} max={maxPts} step={50} value={pts} onChange={e=>setPts(Number(e.target.value))} style={{width:'100%',accentColor:'var(--primary)',marginBottom:8}}/>
-        <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
-          <span>Using: <strong style={{color:'var(--primary)'}}>{Rz(pts)}</strong></span>
-          <span>Cash due: <strong style={{color:cash>0?'var(--amber)':'var(--green-text)'}}>{cash>0?Rz(cash):'Fully covered ✓'}</strong></span>
-        </div>
-      </div>}
-      {/* Total */}
-      <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',borderRadius:'var(--r)',padding:'16px 20px',marginBottom:12,color:'#fff'}}>
-        <div style={{fontSize:10,opacity:0.65,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:4}}>Total · {pax} pax</div>
-        <div style={{fontSize:28,fontWeight:800,letterSpacing:'-0.02em'}}>{Rz(total)}</div>
-        {pts>0&&<div style={{fontSize:12,opacity:0.7,marginTop:4}}>{Rz(pts)} points · {Rz(cash)} EFT</div>}
-      </div>
-      <div style={{display:'flex',gap:10}}>
-        <button className="btn btn-ghost" onClick={onBack}>← Back</button>
-        <button className="btn btn-primary" style={{flex:1}} disabled={busy} onClick={confirm}>
-          {busy?'Submitting…':cash>0?`Confirm — EFT ${Rz(cash)}`:'Confirm booking'}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Main ──────────────────────────────────────────────────
 export default function Travel() {
-  const [type, setType] = useState('hotels');
-  const [view, setView] = useState('search'); // search | bookings
-  const [me, setMe] = useState(null);
-  const [ptBal, setPtBal] = useState(0);
-  const [bookings, setBookings] = useState([]);
-  const [requests, setRequests] = useState([]);
+  const [me, setMe]           = useState(null);
+  const [ptBal, setPtBal]     = useState(0);
+  const [bookings, setBookings]= useState([]);
+  const [requests, setRequests]= useState([]);
+  const [view, setView]       = useState('explore'); // explore | hotels | flight | car | mytrips
+  const [selDest, setSelDest] = useState(null);
+  const [toast, setToast]     = useState('');
+  const flash = m => { setToast(m); setTimeout(()=>setToast(''),3000); };
 
-  // Hotel search state
-  const [dest, setDest] = useState('');
-  const [checkIn, setCheckIn] = useState(dateIn(7));
-  const [checkOut, setCheckOut] = useState(dateIn(10));
-  const [guests, setGuests] = useState(2);
-  const [hotels, setHotels] = useState([]);
-  const [selHotel, setSelHotel] = useState(null);
+  // Hotel search
+  const [checkIn, setCheckIn]  = useState(dateIn(14));
+  const [checkOut, setCheckOut]= useState(dateIn(17));
+  const [guests, setGuests]    = useState(2);
+  const [hotels, setHotels]    = useState([]);
   const [searching, setSearching] = useState(false);
-  const [searched, setSearched] = useState(false);
+  const [searched, setSearched]   = useState(false);
+  const [selHotel, setSelHotel]   = useState(null);
+  const [pts, setPts]             = useState(0);
+  const [bookBusy, setBookBusy]   = useState(false);
+  const [bookRef, setBookRef]     = useState('');
 
-  // Flight/car sub-views
-  const [showFlightForm, setShowFlightForm] = useState(false);
-  const [showCarForm, setShowCarForm] = useState(false);
+  // Flight request
+  const [fl, setFl] = useState({ from:'', to:'', depart:dateIn(21), ret:dateIn(28), trip:'return', pax:'1', cabin:'Economy', notes:'' });
+  const [flPts, setFlPts] = useState(0);
+  const [flBusy, setFlBusy] = useState(false);
+  const [flRef, setFlRef] = useState('');
 
-  const [toast, setToast] = useState('');
-  const flash = m=>{setToast(m);setTimeout(()=>setToast(''),3500);};
+  // Car request
+  const [car, setCar] = useState({ location:'Cape Town Airport', pickup:dateIn(14), dropoff:dateIn(17), category:'Compact SUV', notes:'' });
+  const [carPts, setCarPts] = useState(0);
+  const [carBusy, setCarBusy] = useState(false);
+  const [carRef, setCarRef] = useState('');
 
   const nights = Math.max(1, Math.round((new Date(checkOut)-new Date(checkIn))/86400000));
+  const cash = (selHotel?.price_per_night||0)*nights - pts;
 
-  async function loadData() {
-    const memberId = typeof window!=='undefined'?localStorage.getItem('ohmi_member_id'):null;
-    const emailQuery = memberId ? null : 'brandon@ohmicoffee.co.za';
+  async function load() {
+    const mid = localStorage.getItem('ohmi_member_id');
+    if (!mid) { window.location.href='/'; return; }
     const [mb, ll, bk, rq] = await Promise.all([
-      memberId
-        ? supabase.from('members').select('*').eq('id', memberId).single()
-        : supabase.from('members').select('*').eq('email','brandon@ohmicoffee.co.za').single(),
-      supabase.from('lifestyle_ledger').select('*'),
-      supabase.from('travel_bookings').select('*').order('created_at',{ascending:false}),
-      supabase.from('travel_requests').select('*').order('created_at',{ascending:false}),
+      supabase.from('members').select('*').eq('id',mid).single(),
+      supabase.from('commission_ledger').select('*').eq('member_id',mid),
+      supabase.from('travel_bookings').select('*').eq('member_id',mid).order('created_at',{ascending:false}),
+      supabase.from('travel_requests').select('*').eq('member_id',mid).order('created_at',{ascending:false}),
     ]);
-    const m = mb.data;
-    setMe(m);
-    const ledger = (ll.data||[]).filter(l=>l.member_id===m?.id);
-    setPtBal(
-      ledger.filter(l=>['rank_bonus','adjustment'].includes(l.entry_type)).reduce((s,l)=>s+Number(l.points),0)
-      - ledger.filter(l=>['redemption','expiry'].includes(l.entry_type)).reduce((s,l)=>s+Number(l.points),0)
-    );
-    setBookings((bk.data||[]).filter(b=>b.member_id===m?.id));
-    setRequests((rq.data||[]).filter(r=>r.member_id===m?.id));
+    setMe(mb.data);
+    const l = ll.data||[];
+    setPtBal(Math.max(0,
+      l.filter(x=>!['redemption','expiry'].includes(x.entry_type)).reduce((s,x)=>s+Number(x.amount||0),0)
+      - l.filter(x=>['redemption','expiry'].includes(x.entry_type)).reduce((s,x)=>s+Number(x.amount||0),0)
+    ));
+    setBookings(bk.data||[]);
+    setRequests(rq.data||[]);
   }
 
-  useEffect(()=>{loadData();},[]);
+  useEffect(()=>{ load(); },[]);
 
-  const [hotelsMock, setHotelsMock] = useState(false);
-  const [flightsMock, setFlightsMock] = useState(false);
-  const [flights, setFlights] = useState([]);
-  const [selFlight, setSelFlight] = useState(null);
-  const [flightSearched, setFlightSearched] = useState(false);
-  const [flightSearching, setFlightSearching] = useState(false);
-  // Flight form state
-  const [flightOrigin, setFlightOrigin] = useState('CPT');
-  const [flightDest, setFlightDest] = useState('JNB');
-  const [flightDate, setFlightDate] = useState(dateIn(14));
-  const [flightReturn, setFlightReturn] = useState(dateIn(21));
-  const [flightTrip, setFlightTrip] = useState('return');
-  const [flightPax, setFlightPax] = useState('1');
-  const [flightCabin, setFlightCabin] = useState('ECONOMY');
-
-  async function doHotelSearch() {
-    if(!dest){flash('Enter a destination');return;}
-    setSearching(true); setSearched(false); setSelHotel(null);
+  async function searchHotels() {
+    if (!selDest) return;
+    setSearching(true); setSearched(false); setSelHotel(null); setBookRef('');
     try {
-      const r = await searchHotelsAPI(dest, checkIn, checkOut, guests);
-      setHotels(r.hotels);
-      setHotelsMock(r.mock);
-    } catch(e){ flash('Hotel search failed: ' + e.message); }
+      const res = await fetch(`/api/search/hotels?q=${encodeURIComponent(selDest.name)}&check_in=${checkIn}&check_out=${checkOut}&adults=${guests}`);
+      const data = await res.json();
+      setHotels(data.hotels||[]);
+    } catch { setHotels([]); }
     setSearching(false); setSearched(true);
   }
 
-  async function doFlightSearch() {
-    if(!flightOrigin||!flightDest){flash('Enter origin and destination');return;}
-    setFlightSearching(true); setFlightSearched(false); setSelFlight(null);
-    try {
-      const r = await searchFlightsAPI(flightOrigin, flightDest, flightDate, flightTrip==='return'?flightReturn:null, flightPax, flightCabin);
-      setFlights(r.flights);
-      setFlightsMock(r.mock);
-    } catch(e){ flash('Flight search failed: ' + e.message); }
-    setFlightSearching(false); setFlightSearched(true);
+  async function bookHotel() {
+    setBookBusy(true);
+    const ref = 'VB-H-'+Date.now().toString(36).toUpperCase();
+    await supabase.from('travel_bookings').insert({
+      member_id:me.id, booking_ref:ref,
+      hotel_name:selHotel.name, hotel_location:selHotel.location,
+      check_in:checkIn, check_out:checkOut, nights, guests,
+      total_cost:selHotel.price_per_night*nights, points_used:pts, cash_due:Math.max(0,cash),
+      status:cash<=0?'confirmed':'pending', provider:'Vollard Black',
+    });
+    if (pts>0) await supabase.from('commission_ledger').insert({member_id:me.id,entry_type:'redemption',amount:pts,note:`Hotel: ${selHotel.name} ${ref}`,period:new Date().toISOString().slice(0,7)+'-01'});
+    setBookRef(ref); setBookBusy(false); load();
   }
 
-  const allRequests = [...bookings.map(b=>({...b,_kind:'hotel'})), ...requests.map(r=>({...r,_kind:r.type}))];
+  async function submitFlight() {
+    setFlBusy(true);
+    const ref = 'VB-F-'+Date.now().toString(36).toUpperCase();
+    await supabase.from('travel_requests').insert({
+      member_id:me.id, booking_ref:ref, type:'flight',
+      flight_from:fl.from, flight_to:fl.to, depart_date:fl.depart,
+      return_date:fl.trip==='return'?fl.ret:null, trip_type:fl.trip,
+      passengers:Number(fl.pax), cabin_class:fl.cabin, special_requests:fl.notes||null,
+      points_to_use:flPts, status:'pending',
+    });
+    setFlRef(ref); setFlBusy(false); load();
+  }
+
+  async function submitCar() {
+    setCarBusy(true);
+    const ref = 'VB-C-'+Date.now().toString(36).toUpperCase();
+    await supabase.from('travel_requests').insert({
+      member_id:me.id, booking_ref:ref, type:'car',
+      car_location:car.location, car_pickup:car.pickup, car_dropoff:car.dropoff,
+      car_category:car.category, special_requests:car.notes||null,
+      points_to_use:carPts, status:'pending',
+    });
+    setCarRef(ref); setCarBusy(false); load();
+  }
+
+  const allTrips = [
+    ...bookings.map(b=>({...b,_t:'hotel'})),
+    ...requests.map(r=>({...r,_t:r.type})),
+  ].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+
+  if (!me) return <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--bg)'}}><div style={{fontSize:24,color:'var(--text-muted)'}}>Loading…</div></div>;
 
   return (
     <>
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css"/>
+      <style>{`
+        body{background:#F5F6FA;font-family:'Inter',-apple-system,sans-serif;margin:0}
+        *{box-sizing:border-box}
+        .field-label{font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:#6B7280;display:block;margin-bottom:5px}
+        .field-input{width:100%;padding:11px 14px;background:#fff;color:#111827;border:1px solid #E5E7EB;border-radius:10px;font-size:14px;font-family:inherit;outline:none}
+        .field-input:focus{border-color:#6366F1;box-shadow:0 0 0 3px rgba(99,102,241,0.1)}
+        .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;font-size:13px;font-weight:600;border-radius:10px;border:none;cursor:pointer;font-family:inherit;transition:all 0.2s}
+        .btn-primary{background:linear-gradient(135deg,#6366F1,#0EA5E9);color:#fff;box-shadow:0 4px 16px rgba(99,102,241,0.25)}
+        .btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(99,102,241,0.35)}
+        .btn-primary:disabled{opacity:0.5;transform:none}
+        .btn-ghost{background:transparent;color:#6B7280;border:1px solid #E5E7EB}
+        .btn-ghost:hover{background:#F9FAFB}
+        .pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase}
+        .pill-green{background:rgba(16,185,129,0.1);color:#059669;border:1px solid rgba(16,185,129,0.2)}
+        .pill-amber{background:rgba(245,158,11,0.1);color:#B45309;border:1px solid rgba(245,158,11,0.2)}
+        .pill-primary{background:rgba(99,102,241,0.1);color:#6366F1;border:1px solid rgba(99,102,241,0.2)}
+      `}</style>
 
-      {/* Mobile topbar */}
-      <div className="mobile-topbar">
-        <a href="/dashboard" style={{display:'flex',alignItems:'center',gap:6,background:'var(--surface-2)',border:'none',borderRadius:'var(--r-xs)',height:32,padding:'0 12px',fontSize:12,fontWeight:600,color:'var(--text-sub)',textDecoration:'none'}}>
-          <i className="ti ti-arrow-left" style={{fontSize:14}}/>Dashboard
+      {/* Topbar */}
+      <div style={{position:'sticky',top:0,zIndex:100,background:'rgba(255,255,255,0.95)',backdropFilter:'blur(12px)',borderBottom:'1px solid #E5E7EB',height:56,display:'flex',alignItems:'center',padding:'0 20px',gap:12}}>
+        <a href="/dashboard" style={{display:'flex',alignItems:'center',gap:6,background:'#F3F4F6',border:'none',borderRadius:8,height:32,padding:'0 12px',fontSize:12,fontWeight:600,color:'#374151',cursor:'pointer',textDecoration:'none'}}>
+          <i className="ti ti-arrow-left" style={{fontSize:14}}/>Back
         </a>
-        <span className="mobile-topbar-logo">Travel</span>
-        {ptBal>0&&<span className="pill pill-primary" style={{fontSize:9}}>{ptBal.toLocaleString()} pts</span>}
+        <div style={{flex:1,fontWeight:800,fontSize:16,letterSpacing:'-0.01em',background:'linear-gradient(135deg,#6366F1,#0EA5E9)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',backgroundClip:'text'}}>Atlas Travel</div>
+        {ptBal>0&&<div className="pill pill-primary">✨ {ptBal.toLocaleString()} pts = {Rz(ptBal)}</div>}
+        <button onClick={()=>setView('mytrips')} style={{background:'none',border:'1px solid #E5E7EB',borderRadius:8,padding:'6px 12px',fontSize:12,fontWeight:600,cursor:'pointer',color:'#374151',fontFamily:'inherit',display:'flex',alignItems:'center',gap:6}}>
+          <i className="ti ti-luggage" style={{fontSize:14}}/>My trips{allTrips.length>0?` (${allTrips.length})`:''}
+        </button>
       </div>
 
-      <div className="app-shell">
-        <aside className="rail">
-          <div className="rail-logo">T</div>
-          <div style={{padding:'0 8px',display:'flex',flexDirection:'column',gap:4,flex:1}}>
-            <a href="/dashboard" className="rail-item" data-tip="Dashboard" style={{display:'flex',alignItems:'center',justifyContent:'center',textDecoration:'none',color:'var(--text-muted)'}}>
-              <i className="ti ti-layout-dashboard" aria-hidden="true"/>
-            </a>
-          </div>
-        </aside>
+      <div style={{maxWidth:900,margin:'0 auto',padding:'20px 16px 80px'}}>
 
-        <div className="app-main">
-          <div className="app-topbar">
-            <a href="/dashboard" className="btn btn-ghost btn-sm" style={{display:'flex',alignItems:'center',gap:6,textDecoration:'none'}}>
-              <i className="ti ti-arrow-left" style={{fontSize:14}}/>Dashboard
-            </a>
-            <span className="app-topbar-title" style={{marginLeft:8}}>Travel · Vollard Black</span>
-            
-            <div className="app-topbar-right">
-              <span className="pill pill-primary">
-                <i className="ti ti-sparkles" style={{fontSize:11,marginRight:4}}/>
-                {ptBal.toLocaleString()} pts
-              </span>
-            </div>
-          </div>
-
-          <div className="app-content">
-
-            {/* Points banner */}
-            {ptBal>0&&(
-              <div style={{background:'linear-gradient(135deg,#6366F1,#8B5CF6)',borderRadius:'var(--r)',padding:'16px 20px',display:'flex',alignItems:'center',gap:14,boxShadow:'var(--shadow-md)'}}>
-                <div style={{fontSize:28,flexShrink:0}}>✨</div>
-                <div>
-                  <div style={{fontWeight:700,color:'#fff',fontSize:14}}>Lifestyle wallet — {ptBal.toLocaleString()} points = {Rz(ptBal)}</div>
-                  <div style={{fontSize:12,color:'rgba(255,255,255,0.7)',marginTop:2}}>Apply points to any hotel booking, or reserve them on flight and car requests</div>
-                </div>
-              </div>
-            )}
-
-            {/* Search / My bookings tabs */}
-            <div style={{display:'flex',background:'var(--white)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'var(--shadow-sm)'}}>
-              {[['search','Search & Book'],['bookings',`My Trips${allRequests.length?` (${allRequests.length})`:''}`]].map(([id,label])=>(
-                <button key={id} onClick={()=>{setView(id);setSelHotel(null);setShowFlightForm(false);setShowCarForm(false);}}
-                  style={{flex:1,padding:'13px',background:view===id?'var(--primary)':'transparent',color:view===id?'#fff':'var(--text-muted)',border:'none',fontFamily:'var(--font)',fontSize:13,fontWeight:700,cursor:'pointer',transition:'all 0.15s'}}>
-                  {label}
+        {/* ── EXPLORE ── */}
+        {view==='explore'&&<>
+          {/* Hero */}
+          <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',borderRadius:20,padding:'32px 28px',color:'#fff',marginBottom:24,position:'relative',overflow:'hidden',boxShadow:'0 8px 32px rgba(99,102,241,0.25)'}}>
+            <div style={{position:'absolute',width:200,height:200,borderRadius:'50%',background:'rgba(255,255,255,0.06)',top:-60,right:-60}}/>
+            <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.2em',textTransform:'uppercase',color:'rgba(255,255,255,0.65)',marginBottom:10}}>Atlas Travel Club · Member Benefit</div>
+            <h1 style={{fontSize:'clamp(24px,4vw,36px)',fontWeight:900,letterSpacing:'-0.02em',lineHeight:1.1,marginBottom:10}}>Your commission.<br/>Your holiday.</h1>
+            <p style={{fontSize:14,color:'rgba(255,255,255,0.75)',lineHeight:1.7,maxWidth:440,marginBottom:24}}>
+              Every rand you earn converts to a travel point at 1:1. Use your points to offset hotel bookings, or request flights and car rentals through our concierge.
+            </p>
+            <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+              {[['🏨','Hotels','Book now'],['✈️','Flights','Concierge'],['🚗','Car Rental','Concierge']].map(([icon,label,tag])=>(
+                <button key={label} onClick={()=>setView(label.toLowerCase())} style={{background:'rgba(255,255,255,0.15)',backdropFilter:'blur(8px)',border:'1px solid rgba(255,255,255,0.25)',borderRadius:12,padding:'12px 18px',color:'#fff',cursor:'pointer',fontFamily:'inherit',display:'flex',flexDirection:'column',alignItems:'center',gap:4,transition:'all 0.2s',minWidth:90}}
+                  onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.25)'}
+                  onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.15)'}>
+                  <span style={{fontSize:24}}>{icon}</span>
+                  <span style={{fontSize:12,fontWeight:700}}>{label}</span>
+                  <span style={{fontSize:9,opacity:0.7,letterSpacing:'0.06em',textTransform:'uppercase'}}>{tag}</span>
                 </button>
               ))}
             </div>
+          </div>
 
-            {/* ── SEARCH ── */}
-            {view==='search'&&<>
+          {/* Destinations */}
+          <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',color:'#9CA3AF',marginBottom:16}}>Curated Destinations</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:16}}>
+            {DESTINATIONS.map(d=>(
+              <div key={d.id} onClick={()=>{setSelDest(d);setView('hotels');setSearched(false);setHotels([]);setSelHotel(null);setBookRef('');}}
+                style={{borderRadius:16,overflow:'hidden',cursor:'pointer',border:'1px solid #E5E7EB',boxShadow:'0 2px 8px rgba(0,0,0,0.04)',transition:'all 0.2s',background:'#fff'}}
+                onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-3px)';e.currentTarget.style.boxShadow='0 8px 32px rgba(99,102,241,0.15)';e.currentTarget.style.borderColor='rgba(99,102,241,0.3)';}}
+                onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)';e.currentTarget.style.borderColor='#E5E7EB';}}>
+                <div style={{position:'relative',height:160}}>
+                  <img src={d.img} alt={d.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                  <div style={{position:'absolute',inset:0,background:'linear-gradient(transparent 40%,rgba(0,0,0,0.55))'}}/>
+                  <div style={{position:'absolute',top:10,left:10,background:'linear-gradient(135deg,#6366F1,#0EA5E9)',color:'#fff',fontSize:9,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',padding:'3px 10px',borderRadius:999}}>{d.tag}</div>
+                  <div style={{position:'absolute',bottom:10,left:12,right:12}}>
+                    <div style={{fontSize:16,fontWeight:800,color:'#fff',marginBottom:2}}>{d.name}</div>
+                    <div style={{fontSize:11,color:'rgba(255,255,255,0.75)'}}>{d.country}</div>
+                  </div>
+                </div>
+                <div style={{padding:'14px 16px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <div style={{fontSize:12,color:'#6B7280',lineHeight:1.5}}>{d.desc}</div>
+                  <div style={{textAlign:'right',flexShrink:0,marginLeft:12}}>
+                    <div style={{fontSize:11,color:'#9CA3AF'}}>From</div>
+                    <div style={{fontSize:16,fontWeight:800,color:'#6366F1'}}>{d.from}</div>
+                    <div style={{fontSize:10,color:'#9CA3AF'}}>per night</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>}
 
-              {/* Type selector */}
-              {!selHotel&&!showFlightForm&&!showCarForm&&(
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
-                  {[
-                    {id:'hotels',  icon:'🏨', label:'Hotels',      sub:'Book via RateHawk'},
-                    {id:'flights', icon:'✈️', label:'Flights',     sub:'Concierge request'},
-                    {id:'cars',    icon:'🚗', label:'Car Rental',  sub:'Concierge request'},
-                  ].map(t=>(
-                    <button key={t.id} onClick={()=>setType(t.id)}
-                      style={{display:'flex',flexDirection:'column',alignItems:'center',gap:6,padding:'16px 10px',background:type===t.id?'var(--primary)':'var(--white)',color:type===t.id?'#fff':'var(--text-sub)',border:`1.5px solid ${type===t.id?'var(--primary)':'var(--border)'}`,borderRadius:'var(--r)',cursor:'pointer',transition:'all 0.15s',boxShadow:'var(--shadow-xs)',fontFamily:'var(--font)'}}>
-                      <span style={{fontSize:26}}>{t.icon}</span>
-                      <span style={{fontSize:12,fontWeight:700,letterSpacing:'0.04em'}}>{t.label}</span>
-                      <span style={{fontSize:10,opacity:type===t.id?0.75:0.6}}>{t.sub}</span>
+        {/* ── HOTELS ── */}
+        {view==='hotels'&&<>
+          <button className="btn btn-ghost" style={{marginBottom:16}} onClick={()=>{setView('explore');setSelDest(null);}}>← Destinations</button>
+          {!bookRef&&<>
+            <div style={{background:'#fff',borderRadius:16,padding:'20px',border:'1px solid #E5E7EB',marginBottom:16,boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+              <div style={{marginBottom:14}}>
+                <label className="field-label">Destination</label>
+                <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:10}}>
+                  {DESTINATIONS.map(d=>(
+                    <button key={d.id} onClick={()=>setSelDest(d)} style={{padding:'7px 14px',borderRadius:999,border:`1.5px solid ${selDest?.id===d.id?'#6366F1':'#E5E7EB'}`,background:selDest?.id===d.id?'rgba(99,102,241,0.06)':'#fff',color:selDest?.id===d.id?'#6366F1':'#6B7280',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>
+                      {d.name}
                     </button>
                   ))}
                 </div>
-              )}
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:10,marginBottom:14}}>
+                <div><label className="field-label">Check-in</label><input className="field-input" type="date" value={checkIn} min={dateIn(1)} onChange={e=>setCheckIn(e.target.value)}/></div>
+                <div><label className="field-label">Check-out</label><input className="field-input" type="date" value={checkOut} min={checkIn} onChange={e=>setCheckOut(e.target.value)}/></div>
+                <div><label className="field-label">Guests</label><select className="field-input" value={guests} onChange={e=>setGuests(Number(e.target.value))} style={{width:70}}>{[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
+              </div>
+              {checkIn&&checkOut&&<div style={{fontSize:12,color:'#6B7280',marginBottom:14}}>📅 {nights} night{nights!==1?'s':''}</div>}
+              <button className="btn btn-primary" style={{width:'100%',padding:'13px'}} disabled={!selDest||searching} onClick={searchHotels}>
+                {searching?'Searching RateHawk…':`Search hotels in ${selDest?.name||'—'}`}
+              </button>
+            </div>
 
-              {/* ── HOTELS ── */}
-              {type==='hotels'&&!selHotel&&(
-                <>
-                  <div className="card">
-                    <div className="field">
-                      <label className="field-label">Destination</label>
-                      <div style={{position:'relative'}}>
-                        <i className="ti ti-map-pin" style={{position:'absolute',left:14,top:'50%',transform:'translateY(-50%)',color:'var(--text-muted)',fontSize:16}} aria-hidden="true"/>
-                        <input className="field-input" style={{paddingLeft:40}} value={dest} onChange={e=>setDest(e.target.value)} placeholder="City, hotel or resort" onKeyDown={e=>e.key==='Enter'&&doHotelSearch()}/>
-                      </div>
+            {/* Results */}
+            {!selHotel&&searched&&<>
+              <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:'#9CA3AF',marginBottom:14}}>
+                {hotels.length} hotels found · {selDest?.name} · {nights} nights
+              </div>
+              {hotels.length===0&&<div style={{textAlign:'center',padding:48,background:'#fff',borderRadius:16,border:'1px solid #E5E7EB'}}>
+                <div style={{fontSize:36,marginBottom:10}}>🏨</div>
+                <div style={{fontWeight:700,color:'#111827',marginBottom:6}}>No hotels found</div>
+                <div style={{fontSize:13,color:'#6B7280'}}>Try different dates or another destination</div>
+              </div>}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:16}}>
+                {hotels.map(h=>(
+                  <div key={h.id} onClick={()=>{setSelHotel(h);setPts(0);}} style={{background:'#fff',borderRadius:16,overflow:'hidden',border:'1px solid #E5E7EB',cursor:'pointer',transition:'all 0.2s',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(99,102,241,0.3)';e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 8px 24px rgba(99,102,241,0.12)';}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor='#E5E7EB';e.currentTarget.style.transform='';e.currentTarget.style.boxShadow='0 2px 8px rgba(0,0,0,0.04)';}}>
+                    <div style={{height:160,position:'relative',background:'#F3F4F6'}}>
+                      {h.image&&<img src={h.image} alt={h.name} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>}
+                      <div style={{position:'absolute',top:10,right:10,background:'#fff',borderRadius:8,padding:'4px 10px',fontSize:12,fontWeight:800,color:'#111827'}}>{h.rating}</div>
+                      <div style={{position:'absolute',top:10,left:10,background:'linear-gradient(135deg,#6366F1,#0EA5E9)',color:'#fff',borderRadius:6,padding:'3px 8px',fontSize:10,fontWeight:700}}>{'⭐'.repeat(Math.min(h.stars||3,5))}</div>
                     </div>
-                    <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14,marginTop:-8}}>
-                      {DESTINATIONS.slice(0,8).map(d=>(
-                        <button key={d} onClick={()=>setDest(d)} className={dest===d?'btn btn-primary btn-xs':'btn btn-white btn-xs'} style={{borderRadius:'var(--r-full)',fontSize:11}}>{d}</button>
-                      ))}
-                    </div>
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:10,marginBottom:10}}>
-                      <div className="field" style={{marginBottom:0}}>
-                        <label className="field-label">Check-in</label>
-                        <input className="field-input" type="date" value={checkIn} min={dateIn(0)} onChange={e=>setCheckIn(e.target.value)}/>
+                    <div style={{padding:'14px 16px'}}>
+                      <div style={{fontSize:14,fontWeight:700,color:'#111827',marginBottom:3}}>{h.name}</div>
+                      <div style={{fontSize:11,color:'#9CA3AF',marginBottom:10}}>{h.location}</div>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:5,marginBottom:12}}>
+                        {(h.amenities||[]).slice(0,3).map(a=><span key={a} style={{fontSize:10,color:'#6B7280',background:'#F3F4F6',borderRadius:999,padding:'2px 8px'}}>{a}</span>)}
                       </div>
-                      <div className="field" style={{marginBottom:0}}>
-                        <label className="field-label">Check-out</label>
-                        <input className="field-input" type="date" value={checkOut} min={checkIn} onChange={e=>setCheckOut(e.target.value)}/>
-                      </div>
-                      <div className="field" style={{marginBottom:0}}>
-                        <label className="field-label">Guests</label>
-                        <select className="field-input" style={{width:80}} value={guests} onChange={e=>setGuests(Number(e.target.value))}>
-                          {[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    {checkIn&&checkOut&&<div style={{fontSize:12,color:'var(--text-muted)',marginBottom:12}}>📅 {nights} night{nights!==1?'s':''}</div>}
-                    <button className="btn btn-primary btn-full" disabled={searching} onClick={doHotelSearch}>
-                      {searching?'Searching…':'Search hotels'}
-                    </button>
-                  </div>
-
-                  {/* Results */}
-                  {searched&&!searching&&(
-                    hotels.length>0?(
-                      <>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                          <span className="section-label">{hotels.length} hotels · {dest}</span>
-                          <span style={{fontSize:12,color:'var(--text-muted)'}}>{nights} nights · {guests} guests</span>
-                        </div>
-                        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:14}}>
-                          {hotels.map(h=><HotelCard key={h.id} h={h} nights={nights} onSelect={setSelHotel}/>)}
-                        </div>
-                      </>
-                    ):(
-                      <div style={{textAlign:'center',padding:'40px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}>
-                        <div style={{fontSize:36,marginBottom:10}}>🏨</div>
-                        <div style={{fontSize:16,fontWeight:700,color:'var(--text-h)',marginBottom:6}}>No hotels found for {dest}</div>
-                        <div style={{fontSize:13,color:'var(--text-muted)'}}>Try a different destination or dates</div>
-                      </div>
-                    )
-                  )}
-
-                  {!searched&&!searching&&(
-                    <div>
-                      <div className="section-label" style={{marginBottom:12}}>Popular destinations</div>
-                      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10}}>
-                        {[
-                          {name:'Cape Town',      img:'https://images.unsplash.com/photo-1580060839134-75a5edca2e99?w=400&q=70'},
-                          {name:'Garden Route',   img:'https://images.unsplash.com/photo-1516026672322-bc52d61a55d5?w=400&q=70'},
-                          {name:'Kruger',         img:'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=400&q=70'},
-                          {name:'Zanzibar',       img:'https://images.unsplash.com/photo-1590523741831-ab7e8b8f9c7f?w=400&q=70'},
-                          {name:'Mauritius',      img:'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=70'},
-                          {name:'Dubai',          img:'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&q=70'},
-                        ].map(d=>(
-                          <button key={d.name} onClick={()=>{setDest(d.name);setType('hotels');}}
-                            style={{position:'relative',height:110,borderRadius:'var(--r)',overflow:'hidden',border:'none',cursor:'pointer',padding:0,boxShadow:'var(--shadow-sm)'}}>
-                            <img src={d.img} alt={d.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                            <div style={{position:'absolute',inset:0,background:'linear-gradient(transparent 40%,rgba(0,0,0,0.7)'}}/>
-                            <div style={{position:'absolute',bottom:8,left:10,color:'#fff',fontSize:13,fontWeight:700,fontFamily:'var(--font)',textAlign:'left'}}>{d.name}</div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Hotel booking detail */}
-              {type==='hotels'&&selHotel&&(
-                <HotelBooking hotel={selHotel} nights={nights} checkIn={checkIn} checkOut={checkOut} guests={guests} ptBal={ptBal} me={me}
-                  onBack={()=>setSelHotel(null)} onDone={()=>{loadData();}} flash={flash}/>
-              )}
-
-              {/* ── FLIGHTS ── */}
-              {type==='flights'&&!selFlight&&(
-                <>
-                  {/* Search form */}
-                  <div className="card">
-                    <div style={{display:'flex',gap:8,marginBottom:14}}>
-                      {['return','oneway'].map(t=>(
-                        <button key={t} onClick={()=>setFlightTrip(t)}
-                          className={flightTrip===t?'btn btn-primary btn-sm':'btn btn-ghost btn-sm'}
-                          style={{borderRadius:'var(--r-full)',flex:1}}>
-                          {t==='return'?'✈ Return':'→ One way'}
-                        </button>
-                      ))}
-                    </div>
-                    <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',gap:8,alignItems:'end',marginBottom:14}}>
-                      <div className="field" style={{marginBottom:0}}>
-                        <label className="field-label">From (IATA)</label>
-                        <input className="field-input" value={flightOrigin} onChange={e=>setFlightOrigin(e.target.value.toUpperCase())} placeholder="CPT" maxLength={3} style={{textTransform:'uppercase',letterSpacing:'0.1em',fontWeight:700}}/>
-                      </div>
-                      <button onClick={()=>{const t=flightOrigin;setFlightOrigin(flightDest);setFlightDest(t);}}
-                        style={{height:44,width:40,background:'var(--primary-bg)',border:'1px solid var(--primary-border)',borderRadius:'var(--r-full)',cursor:'pointer',fontSize:16,color:'var(--primary)',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:0,flexShrink:0,fontFamily:'inherit'}}>
-                        ⇄
-                      </button>
-                      <div className="field" style={{marginBottom:0}}>
-                        <label className="field-label">To (IATA)</label>
-                        <input className="field-input" value={flightDest} onChange={e=>setFlightDest(e.target.value.toUpperCase())} placeholder="JNB" maxLength={3} style={{textTransform:'uppercase',letterSpacing:'0.1em',fontWeight:700}}/>
-                      </div>
-                    </div>
-                    {/* Common SA routes */}
-                    <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:14,marginTop:-8}}>
-                      {[['CPT','JNB'],['CPT','DUR'],['JNB','CPT'],['JNB','DXB'],['JNB','LHR'],['CPT','MRU']].map(([o,d])=>(
-                        <button key={o+d} onClick={()=>{setFlightOrigin(o);setFlightDest(d);}}
-                          className={(flightOrigin===o&&flightDest===d)?'btn btn-primary btn-xs':'btn btn-white btn-xs'}
-                          style={{borderRadius:'var(--r-full)',fontSize:11,letterSpacing:'0.04em',fontWeight:700}}>
-                          {o}→{d}
-                        </button>
-                      ))}
-                    </div>
-                    <div style={{display:'grid',gridTemplateColumns:`1fr${flightTrip==='return'?' 1fr':''} 1fr 1fr`,gap:10,marginBottom:14}}>
-                      <div className="field" style={{marginBottom:0}}>
-                        <label className="field-label">Depart</label>
-                        <input className="field-input" type="date" value={flightDate} min={dateIn(1)} onChange={e=>setFlightDate(e.target.value)}/>
-                      </div>
-                      {flightTrip==='return'&&<div className="field" style={{marginBottom:0}}>
-                        <label className="field-label">Return</label>
-                        <input className="field-input" type="date" value={flightReturn} min={flightDate} onChange={e=>setFlightReturn(e.target.value)}/>
-                      </div>}
-                      <div className="field" style={{marginBottom:0}}>
-                        <label className="field-label">Pax</label>
-                        <select className="field-input" value={flightPax} onChange={e=>setFlightPax(e.target.value)}>
-                          {[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}</option>)}
-                        </select>
-                      </div>
-                      <div className="field" style={{marginBottom:0}}>
-                        <label className="field-label">Cabin</label>
-                        <select className="field-input" value={flightCabin} onChange={e=>setFlightCabin(e.target.value)}>
-                          {[['ECONOMY','Economy'],['PREMIUM_ECONOMY','Prem. Eco'],['BUSINESS','Business'],['FIRST','First']].map(([v,l])=><option key={v} value={v}>{l}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    <button className="btn btn-primary btn-full" disabled={flightSearching} onClick={doFlightSearch} style={{fontSize:14,padding:'13px'}}>
-                      {flightSearching?'Scanning flights…':'Search flights'}
-                    </button>
-                  </div>
-
-                  {/* Results */}
-                  {flightSearching&&(
-                    <div style={{textAlign:'center',padding:'32px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}>
-                      <div style={{fontSize:32,marginBottom:10}}>✈️</div>
-                      <div style={{fontWeight:600,color:'var(--text-h)',marginBottom:4}}>Scanning {flightsMock?'demo':'live'} fares…</div>
-                      <div style={{fontSize:12,color:'var(--text-muted)'}}>{flightOrigin} → {flightDest} · {flightDate}</div>
-                    </div>
-                  )}
-
-                  {flightSearched&&!flightSearching&&(
-                    <>
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                        <span className="section-label">{flights.length} flight{flights.length!==1?'s':''} · {flightOrigin} → {flightDest}</span>
-                        <div style={{display:'flex',gap:8,alignItems:'center'}}>
-                          {flightsMock&&<span className="pill pill-amber" style={{fontSize:9}}>Demo data — add AMADEUS_CLIENT_ID to enable live fares</span>}
-                          <span style={{fontSize:12,color:'var(--text-muted)'}}>{flightPax} pax · {flightCabin}</span>
+                        <div>
+                          <div style={{fontSize:20,fontWeight:800,color:'#6366F1',letterSpacing:'-0.02em'}}>{Rz(h.price_per_night)}</div>
+                          <div style={{fontSize:10,color:'#9CA3AF'}}>/night · {Rz((h.price_per_night||0)*nights)} total</div>
                         </div>
+                        <button className="btn btn-primary" style={{fontSize:12,padding:'8px 16px'}} onClick={e=>{e.stopPropagation();setSelHotel(h);setPts(0);}}>Book →</button>
                       </div>
-                      {flights.length===0?(
-                        <div style={{textAlign:'center',padding:'32px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}>
-                          <div style={{fontSize:36,marginBottom:10}}>✈️</div>
-                          <div style={{fontWeight:600,color:'var(--text-h)',marginBottom:4}}>No flights found</div>
-                          <div style={{fontSize:12,color:'var(--text-muted)'}}>Try different dates or routes</div>
-                        </div>
-                      ):(
-                        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-                          {flights.map(f=>(
-                            <div key={f.id} className="card" style={{cursor:'pointer',transition:'box-shadow 0.15s,transform 0.15s'}}
-                              onClick={()=>setSelFlight(f)}
-                              onMouseEnter={e=>{e.currentTarget.style.boxShadow='var(--shadow-md)';e.currentTarget.style.transform='translateY(-1px)';}}
-                              onMouseLeave={e=>{e.currentTarget.style.boxShadow='';e.currentTarget.style.transform='';}}>
-                              {/* Airline header */}
-                              <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:14}}>
-                                <div style={{width:44,height:44,borderRadius:'var(--r-sm)',background:'linear-gradient(135deg,#1e3a5f,#6366F1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                                  <span style={{fontSize:11,fontWeight:800,color:'#fff',letterSpacing:'0.04em'}}>{f.airline_code}</span>
-                                </div>
-                                <div style={{flex:1}}>
-                                  <div style={{fontWeight:700,fontSize:14,color:'var(--text-h)'}}>{f.airline}</div>
-                                  <div style={{fontSize:11,color:'var(--text-muted)'}}>{f.flight_number} · {f.cabin_class} · {f.stops===0?'Non-stop':`${f.stops} stop`}</div>
-                                </div>
-                                <div style={{textAlign:'right'}}>
-                                  <div style={{fontSize:24,fontWeight:800,color:'var(--text-h)',letterSpacing:'-0.02em'}}>{Rz(f.price)}</div>
-                                  <div style={{fontSize:10,color:'var(--text-muted)'}}>{Number(flightPax)>1?`total · ${Rz(Math.round(f.price/Number(flightPax)))} pp`:'total'}</div>
-                                </div>
-                              </div>
-                              {/* Outbound leg */}
-                              <div style={{background:'var(--surface-1)',borderRadius:'var(--r-sm)',padding:'14px 16px',marginBottom:f.return_leg?8:0}}>
-                                <div style={{fontSize:9,fontWeight:700,color:'var(--text-dim)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:8}}>Outbound · {f.depart_dt?.slice(0,10)||flightDate}</div>
-                                <div style={{display:'flex',alignItems:'center',gap:8}}>
-                                  <div style={{textAlign:'left'}}>
-                                    <div style={{fontFamily:'monospace',fontSize:22,fontWeight:800,color:'var(--text-h)'}}>{f.departure}</div>
-                                    <div style={{fontSize:12,fontWeight:700,color:'var(--text-muted)'}}>{f.from.code}</div>
-                                  </div>
-                                  <div style={{flex:1,textAlign:'center',padding:'0 8px'}}>
-                                    <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>{f.duration}</div>
-                                    <div style={{display:'flex',alignItems:'center',gap:4}}>
-                                      <div style={{flex:1,height:1.5,background:'var(--border-md)'}}/>
-                                      <span style={{color:'var(--primary)',fontSize:14}}>✈</span>
-                                      <div style={{flex:1,height:1.5,background:'var(--border-md)'}}/>
-                                    </div>
-                                    <div style={{fontSize:10,fontWeight:600,color:f.stops===0?'var(--green-text)':'var(--amber)',marginTop:3}}>{f.stops===0?'Non-stop':`${f.stops} stop`}</div>
-                                  </div>
-                                  <div style={{textAlign:'right'}}>
-                                    <div style={{fontFamily:'monospace',fontSize:22,fontWeight:800,color:'var(--text-h)'}}>{f.arrival}</div>
-                                    <div style={{fontSize:12,fontWeight:700,color:'var(--text-muted)'}}>{f.to.code}</div>
-                                  </div>
-                                </div>
-                              </div>
-                              {/* Return leg */}
-                              {f.return_leg&&(
-                                <div style={{background:'rgba(99,102,241,0.04)',borderRadius:'var(--r-sm)',padding:'14px 16px',border:'1px solid var(--primary-border)'}}>
-                                  <div style={{fontSize:9,fontWeight:700,color:'var(--primary)',letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:8}}>Return · {flightReturn}</div>
-                                  <div style={{display:'flex',alignItems:'center',gap:8}}>
-                                    <div style={{textAlign:'left'}}>
-                                      <div style={{fontFamily:'monospace',fontSize:22,fontWeight:800,color:'var(--text-h)'}}>{f.return_leg.departure}</div>
-                                      <div style={{fontSize:12,fontWeight:700,color:'var(--text-muted)'}}>{f.to.code}</div>
-                                    </div>
-                                    <div style={{flex:1,textAlign:'center',padding:'0 8px'}}>
-                                      <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:3}}>{f.return_leg.duration}</div>
-                                      <div style={{display:'flex',alignItems:'center',gap:4}}>
-                                        <div style={{flex:1,height:1.5,background:'var(--border-md)'}}/>
-                                        <span style={{color:'var(--primary)',fontSize:14}}>✈</span>
-                                        <div style={{flex:1,height:1.5,background:'var(--border-md)'}}/>
-                                      </div>
-                                      <div style={{fontSize:10,fontWeight:600,color:f.return_leg.stops===0?'var(--green-text)':'var(--amber)',marginTop:3}}>{f.return_leg.stops===0?'Non-stop':`${f.return_leg.stops} stop`}</div>
-                                    </div>
-                                    <div style={{textAlign:'right'}}>
-                                      <div style={{fontFamily:'monospace',fontSize:22,fontWeight:800,color:'var(--text-h)'}}>{f.return_leg.arrival}</div>
-                                      <div style={{fontSize:12,fontWeight:700,color:'var(--text-muted)'}}>{f.from.code}</div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                              {/* Baggage */}
-                              <div style={{marginTop:10,fontSize:11,color:'var(--text-muted)',display:'flex',alignItems:'center',gap:6}}>
-                                <span>🧳</span>{f.baggage}
-                                <span style={{marginLeft:'auto',color:'var(--primary)',fontWeight:600,fontSize:12}}>Book this flight →</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </>
-              )}
-
-              {/* ── FLIGHT BOOKING ── */}
-              {type==='flights'&&selFlight&&(
-                <FlightBookingPanel flight={selFlight} pax={Number(flightPax)} ptBal={ptBal} me={me}
-                  onBack={()=>setSelFlight(null)} onDone={()=>{loadData();setView('bookings');}} flash={flash}/>
-              )}
-
-              {/* ── CARS ── */}
-              {type==='cars'&&(
-                <CarRequest me={me} ptBal={ptBal} onDone={()=>{loadData();setView('bookings');}} flash={flash}/>
-              )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </>}
 
-            {/* ── MY TRIPS ── */}
-            {view==='bookings'&&(
-              allRequests.length===0?(
-                <div style={{textAlign:'center',padding:'48px 20px',background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)'}}>
-                  <div style={{fontSize:48,marginBottom:12}}>🌍</div>
-                  <div style={{fontSize:16,fontWeight:700,color:'var(--text-h)',marginBottom:6}}>No trips yet</div>
-                  <div style={{fontSize:13,color:'var(--text-muted)',marginBottom:20}}>Search for hotels, or submit a flight / car request</div>
-                  <button className="btn btn-primary" onClick={()=>setView('search')}>Start planning</button>
+            {/* Hotel booking detail */}
+            {selHotel&&<>
+              <button className="btn btn-ghost" style={{marginBottom:14}} onClick={()=>setSelHotel(null)}>← Results</button>
+              <div style={{background:'#fff',borderRadius:16,overflow:'hidden',border:'1px solid #E5E7EB',marginBottom:14}}>
+                <div style={{height:200,background:'#F3F4F6',position:'relative'}}>
+                  {selHotel.image&&<img src={selHotel.image} alt={selHotel.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>}
                 </div>
-              ):(
-                <div style={{display:'flex',flexDirection:'column',gap:12}}>
-                  {/* Hotel bookings */}
-                  {bookings.map(b=>(
-                    <div key={b.id} style={{background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)',overflow:'hidden'}}>
-                      <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',padding:'14px 20px'}}>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                          <div>
-                            <div style={{fontSize:10,color:'rgba(255,255,255,0.6)',fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:4}}>🏨 Hotel · {b.booking_ref}</div>
-                            <div style={{fontSize:18,fontWeight:800,color:'#fff',letterSpacing:'-0.01em'}}>{b.hotel_name}</div>
-                            <div style={{fontSize:12,color:'rgba(255,255,255,0.7)',marginTop:2}}>{b.hotel_location}</div>
-                          </div>
-                          <span className={`pill pill-${b.status==='confirmed'?'green':b.status==='pending'?'amber':'red'}`}>{b.status}</span>
-                        </div>
-                      </div>
-                      <div style={{padding:'14px 20px',display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(100px,1fr))',gap:10}}>
-                        {[['Check-in',Dz(b.check_in)],['Check-out',Dz(b.check_out)],['Nights',b.nights],['Total',Rz(b.total_cost)],['Cash due',Number(b.cash_due)>0?Rz(b.cash_due):'Covered ✓']].map(([l,v])=>(
-                          <div key={l}>
-                            <div style={{fontSize:9,color:'var(--text-muted)',fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:3}}>{l}</div>
-                            <div style={{fontSize:13,fontWeight:700,color:'var(--text-h)'}}>{v}</div>
-                          </div>
-                        ))}
-                      </div>
+                <div style={{padding:'20px'}}>
+                  <div style={{fontSize:20,fontWeight:800,color:'#111827',marginBottom:4}}>{selHotel.name}</div>
+                  <div style={{fontSize:13,color:'#6B7280',marginBottom:16}}>{selHotel.location}</div>
+                  {ptBal>0&&<div style={{background:'rgba(99,102,241,0.06)',border:'1px solid rgba(99,102,241,0.15)',borderRadius:12,padding:'16px',marginBottom:16}}>
+                    <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#6B7280',marginBottom:8}}>Apply lifestyle points</div>
+                    <div style={{fontSize:13,color:'#6B7280',marginBottom:8}}>Available: <strong style={{color:'#6366F1'}}>{ptBal.toLocaleString()} pts = {Rz(ptBal)}</strong></div>
+                    <input type="range" min={0} max={Math.min(ptBal,(selHotel.price_per_night||0)*nights)} step={50} value={pts} onChange={e=>setPts(Number(e.target.value))} style={{width:'100%',accentColor:'#6366F1',marginBottom:8}}/>
+                    <div style={{display:'flex',justifyContent:'space-between',fontSize:13}}>
+                      <span>Using: <strong style={{color:'#6366F1'}}>{Rz(pts)}</strong></span>
+                      <span>Cash due: <strong style={{color:cash<=0?'#059669':'#B45309'}}>{cash<=0?'Fully covered ✓':Rz(Math.max(0,cash))}</strong></span>
                     </div>
-                  ))}
-                  {/* Flight + car requests */}
-                  {requests.map(r=>(
-                    <div key={r.id} style={{background:'var(--white)',borderRadius:'var(--r)',boxShadow:'var(--shadow-sm)',overflow:'hidden'}}>
-                      <div style={{background:r.type==='flight'?'linear-gradient(135deg,#374151,#6366F1)':'linear-gradient(135deg,#374151,#10B981)',padding:'14px 20px'}}>
-                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
-                          <div>
-                            <div style={{fontSize:10,color:'rgba(255,255,255,0.6)',fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:4}}>
-                              {r.type==='flight'?'✈️ Flight':'🚗 Car Rental'} · {r.booking_ref}
-                            </div>
-                            <div style={{fontSize:18,fontWeight:800,color:'#fff',letterSpacing:'-0.01em'}}>
-                              {r.type==='flight'?`${r.flight_from} → ${r.flight_to}`:r.car_category}
-                            </div>
-                            <div style={{fontSize:12,color:'rgba(255,255,255,0.7)',marginTop:2}}>
-                              {r.type==='flight'
-                                ?`${Dz(r.depart_date)}${r.return_date?` · Return ${Dz(r.return_date)}`:''} · ${r.passengers} pax · ${r.cabin_class}`
-                                :`${r.car_location} · ${Dz(r.car_pickup)} → ${Dz(r.car_dropoff)}`}
-                            </div>
-                          </div>
-                          <span className={`pill pill-${r.status==='confirmed'?'green':r.status==='quoted'?'primary':r.status==='pending'?'amber':'red'}`}>{r.status}</span>
-                        </div>
-                      </div>
-                      <div style={{padding:'12px 20px',fontSize:12,color:'var(--text-sub)',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                        <span>
-                          {r.status==='pending'&&'Awaiting quote — Vollard Black will contact you within 24hrs'}
-                          {r.status==='quoted'&&`Quote ready: ${r.quoted_amount?Rz(r.quoted_amount):'—'}`}
-                          {r.status==='confirmed'&&'Booking confirmed'}
-                          {r.status==='cancelled'&&'Request cancelled'}
-                        </span>
-                        {r.points_to_use>0&&<span className="pill pill-primary" style={{fontSize:9}}>{Number(r.points_to_use).toLocaleString()} pts reserved</span>}
-                      </div>
-                    </div>
-                  ))}
+                  </div>}
+                  <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',borderRadius:12,padding:'16px 20px',marginBottom:16,color:'#fff'}}>
+                    <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.14em',textTransform:'uppercase',color:'rgba(255,255,255,0.65)',marginBottom:4}}>{nights} nights · {guests} guests</div>
+                    <div style={{fontSize:32,fontWeight:900,letterSpacing:'-0.03em'}}>{Rz((selHotel.price_per_night||0)*nights)}</div>
+                    {pts>0&&<div style={{fontSize:13,color:'rgba(255,255,255,0.7)',marginTop:4}}>{Rz(pts)} points · {Rz(Math.max(0,cash))} EFT</div>}
+                  </div>
+                  {cash>0&&<div style={{background:'rgba(99,102,241,0.04)',border:'1px solid rgba(99,102,241,0.12)',borderRadius:12,padding:'14px 16px',marginBottom:16,fontSize:13,color:'#374151',lineHeight:1.8}}>
+                    <strong>EFT Payment</strong><br/>
+                    FNB · OHMI Coffee Co. (Pty) Ltd<br/>
+                    Amount: <strong style={{color:'#6366F1'}}>{Rz(Math.max(0,cash))}</strong> · Ref: your name
+                  </div>}
+                  <button className="btn btn-primary" style={{width:'100%',padding:'14px',fontSize:14}} disabled={bookBusy} onClick={bookHotel}>
+                    {bookBusy?'Confirming…':cash<=0?'Confirm booking (fully covered)':`Confirm — EFT ${Rz(Math.max(0,cash))}`}
+                  </button>
                 </div>
-              )
-            )}
+              </div>
+            </>}
+          </>}
 
+          {/* Booking confirmed */}
+          {bookRef&&<div style={{background:'linear-gradient(135deg,#10B981,#0EA5E9)',borderRadius:20,padding:'32px 28px',color:'#fff',textAlign:'center'}}>
+            <div style={{fontSize:48,marginBottom:16}}>🏨</div>
+            <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.2em',textTransform:'uppercase',color:'rgba(255,255,255,0.65)',marginBottom:8}}>Booking {cash<=0?'confirmed':'submitted'}</div>
+            <div style={{fontSize:22,fontWeight:800,marginBottom:6}}>{selHotel?.name}</div>
+            <div style={{fontSize:14,color:'rgba(255,255,255,0.75)',marginBottom:24}}>{fmtDate(checkIn)} → {fmtDate(checkOut)} · {nights} nights</div>
+            <div style={{background:'rgba(0,0,0,0.15)',borderRadius:12,padding:'14px',marginBottom:20,textAlign:'left'}}>
+              <div style={{fontSize:10,color:'rgba(255,255,255,0.6)',fontWeight:700,letterSpacing:'0.1em',marginBottom:4}}>REFERENCE</div>
+              <div style={{fontFamily:'monospace',fontSize:16,fontWeight:700}}>{bookRef}</div>
+            </div>
+            <div style={{display:'flex',gap:10,justifyContent:'center'}}>
+              <button onClick={()=>{setBookRef('');setSelHotel(null);setSearched(false);}} style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:12,padding:'11px 24px',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,fontFamily:'inherit'}}>Search more</button>
+              <button onClick={()=>setView('mytrips')} style={{background:'#fff',border:'none',borderRadius:12,padding:'11px 24px',color:'#10B981',cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit'}}>My trips →</button>
+            </div>
+          </div>}
+        </>}
+
+        {/* ── FLIGHTS ── */}
+        {view==='flights'&&<>
+          <button className="btn btn-ghost" style={{marginBottom:16}} onClick={()=>setView('explore')}>← Back</button>
+          {!flRef?(<>
+            <div style={{background:'rgba(99,102,241,0.05)',border:'1px solid rgba(99,102,241,0.15)',borderRadius:14,padding:'16px',marginBottom:20,display:'flex',gap:12,alignItems:'flex-start'}}>
+              <span style={{fontSize:24,flexShrink:0}}>✈️</span>
+              <div>
+                <div style={{fontWeight:700,color:'#6366F1',marginBottom:4}}>Flight concierge service</div>
+                <div style={{fontSize:13,color:'#6B7280',lineHeight:1.7}}>Submit your flight details. Vollard Black will source the best available flights across all airlines and send you a personalised quote within 24 hours. Use your lifestyle points to offset the cost.</div>
+              </div>
+            </div>
+            <div style={{background:'#fff',borderRadius:16,padding:'20px',border:'1px solid #E5E7EB',display:'flex',flexDirection:'column',gap:14}}>
+              <div style={{display:'flex',gap:8}}>
+                {['return','oneway'].map(t=><button key={t} onClick={()=>setFl(f=>({...f,trip:t}))} style={{flex:1,padding:'10px',borderRadius:10,border:`1.5px solid ${fl.trip===t?'#6366F1':'#E5E7EB'}`,background:fl.trip===t?'rgba(99,102,241,0.06)':'#fff',color:fl.trip===t?'#6366F1':'#6B7280',fontWeight:700,cursor:'pointer',fontFamily:'inherit',fontSize:13}}>{t==='return'?'Return':'One way'}</button>)}
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',gap:8,alignItems:'end'}}>
+                <div><label className="field-label">From</label><input className="field-input" value={fl.from} onChange={e=>setFl(f=>({...f,from:e.target.value}))} placeholder="City or IATA code" list="fl-from-list"/><datalist id="fl-from-list">{AIRPORTS.map(a=><option key={a} value={a}/>)}</datalist></div>
+                <button onClick={()=>setFl(f=>({...f,from:f.to,to:f.from}))} style={{height:44,width:40,background:'rgba(99,102,241,0.06)',border:'1px solid rgba(99,102,241,0.2)',borderRadius:999,cursor:'pointer',fontSize:16,color:'#6366F1',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:0,flexShrink:0}}>⇄</button>
+                <div><label className="field-label">To</label><input className="field-input" value={fl.to} onChange={e=>setFl(f=>({...f,to:e.target.value}))} placeholder="City or IATA code" list="fl-to-list"/><datalist id="fl-to-list">{AIRPORTS.map(a=><option key={a} value={a}/>)}</datalist></div>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:`1fr${fl.trip==='return'?' 1fr':''} 1fr 1fr`,gap:10}}>
+                <div><label className="field-label">Depart</label><input className="field-input" type="date" value={fl.depart} min={dateIn(1)} onChange={e=>setFl(f=>({...f,depart:e.target.value}))}/></div>
+                {fl.trip==='return'&&<div><label className="field-label">Return</label><input className="field-input" type="date" value={fl.ret} min={fl.depart} onChange={e=>setFl(f=>({...f,ret:e.target.value}))}/></div>}
+                <div><label className="field-label">Passengers</label><select className="field-input" value={fl.pax} onChange={e=>setFl(f=>({...f,pax:e.target.value}))}>{[1,2,3,4,5,6,7,8].map(n=><option key={n} value={n}>{n}</option>)}</select></div>
+                <div><label className="field-label">Cabin</label><select className="field-input" value={fl.cabin} onChange={e=>setFl(f=>({...f,cabin:e.target.value}))}>{['Economy','Premium Economy','Business','First Class'].map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+              </div>
+              <div><label className="field-label">Special requests (optional)</label><textarea className="field-input" rows={2} value={fl.notes} onChange={e=>setFl(f=>({...f,notes:e.target.value}))} placeholder="Preferred airline, meals, baggage, seating…" style={{resize:'vertical'}}/></div>
+              {ptBal>0&&<div style={{background:'rgba(99,102,241,0.04)',border:'1px solid rgba(99,102,241,0.12)',borderRadius:12,padding:'14px'}}>
+                <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#6B7280',marginBottom:8}}>Reserve lifestyle points</div>
+                <div style={{fontSize:13,color:'#6B7280',marginBottom:8}}>Available: <strong style={{color:'#6366F1'}}>{ptBal.toLocaleString()} pts = {Rz(ptBal)}</strong></div>
+                <input type="range" min={0} max={ptBal} step={100} value={flPts} onChange={e=>setFlPts(Number(e.target.value))} style={{width:'100%',accentColor:'#6366F1',marginBottom:6}}/>
+                <div style={{fontSize:13,color:'#6B7280'}}>{flPts>0?<><strong style={{color:'#6366F1'}}>{Rz(flPts)}</strong> reserved to offset quote</>:'No points reserved'}</div>
+              </div>}
+              <button className="btn btn-primary" style={{padding:'14px',fontSize:14}} disabled={flBusy||!fl.from||!fl.to} onClick={submitFlight}>{flBusy?'Submitting…':'Submit flight request →'}</button>
+            </div>
+          </>):(
+            <div style={{background:'linear-gradient(135deg,#6366F1,#0EA5E9)',borderRadius:20,padding:'32px 28px',color:'#fff',textAlign:'center'}}>
+              <div style={{fontSize:48,marginBottom:16}}>✈️</div>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:'0.2em',textTransform:'uppercase',color:'rgba(255,255,255,0.65)',marginBottom:8}}>Flight request submitted</div>
+              <div style={{fontSize:22,fontWeight:800,marginBottom:6}}>{fl.from} → {fl.to}</div>
+              <div style={{fontSize:14,color:'rgba(255,255,255,0.75)',marginBottom:24}}>{fmtDate(fl.depart)}{fl.trip==='return'?` · Return ${fmtDate(fl.ret)}`:''} · {fl.pax} pax · {fl.cabin}</div>
+              <div style={{background:'rgba(0,0,0,0.15)',borderRadius:12,padding:'14px 16px',marginBottom:20,textAlign:'left',lineHeight:1.8,fontSize:13}}>
+                <div style={{fontWeight:700,marginBottom:6}}>What happens next</div>
+                <div style={{opacity:0.85}}>1. Ref: <strong>{flRef}</strong><br/>2. We source best flights across all airlines<br/>3. Quote delivered within 24 hours<br/>4. Confirm → pay EFT → tickets issued</div>
+              </div>
+              {flPts>0&&<div style={{background:'rgba(255,255,255,0.1)',borderRadius:10,padding:'10px',marginBottom:16,fontSize:13}}>{flPts.toLocaleString()} lifestyle points reserved</div>}
+              <div style={{display:'flex',gap:10,justifyContent:'center'}}>
+                <button onClick={()=>setFlRef('')} style={{background:'rgba(255,255,255,0.15)',border:'1px solid rgba(255,255,255,0.3)',borderRadius:12,padding:'11px 24px',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,fontFamily:'inherit'}}>New request</button>
+                <button onClick={()=>setView('mytrips')} style={{background:'#fff',border:'none',borderRadius:12,padding:'11px 24px',color:'#6366F1',cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit'}}>My trips →</button>
+              </div>
+            </div>
+          )}
+        </>}
+
+        {/* ── CARS ── */}
+        {view==='car rental'&&<>
+          <button className="btn btn-ghost" style={{marginBottom:16}} onClick={()=>setView('explore')}>← Back</button>
+          {!carRef?(<>
+            <div style={{background:'rgba(16,185,129,0.05)',border:'1px solid rgba(16,185,129,0.15)',borderRadius:14,padding:'16px',marginBottom:20,display:'flex',gap:12}}>
+              <span style={{fontSize:24,flexShrink:0}}>🚗</span>
+              <div>
+                <div style={{fontWeight:700,color:'#059669',marginBottom:4}}>Car rental concierge</div>
+                <div style={{fontSize:13,color:'#6B7280',lineHeight:1.7}}>Tell us what you need and we'll source the best available vehicle from trusted suppliers. Quote within 24 hours, offset with lifestyle points.</div>
+              </div>
+            </div>
+            <div style={{background:'#fff',borderRadius:16,padding:'20px',border:'1px solid #E5E7EB',display:'flex',flexDirection:'column',gap:14}}>
+              <div>
+                <label className="field-label">Pickup location</label>
+                <input className="field-input" value={car.location} onChange={e=>setCar(c=>({...c,location:e.target.value}))} placeholder="Airport, hotel or city" list="car-locs"/>
+                <datalist id="car-locs">{['Cape Town Airport','Cape Town City','Stellenbosch','Johannesburg Airport','Sandton','Durban Airport','George Airport','Knysna','Hermanus','Franschhoek'].map(l=><option key={l} value={l}/>)}</datalist>
+              </div>
+              <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                {['Cape Town Airport','Stellenbosch','George Airport','Johannesburg Airport'].map(l=><button key={l} onClick={()=>setCar(c=>({...c,location:l}))} style={{padding:'6px 12px',borderRadius:999,border:`1.5px solid ${car.location===l?'#059669':'#E5E7EB'}`,background:car.location===l?'rgba(16,185,129,0.06)':'#fff',color:car.location===l?'#059669':'#6B7280',fontSize:11,fontWeight:600,cursor:'pointer',fontFamily:'inherit'}}>{l}</button>)}
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                <div><label className="field-label">Pickup date</label><input className="field-input" type="date" value={car.pickup} min={dateIn(1)} onChange={e=>setCar(c=>({...c,pickup:e.target.value}))}/></div>
+                <div><label className="field-label">Return date</label><input className="field-input" type="date" value={car.dropoff} min={car.pickup} onChange={e=>setCar(c=>({...c,dropoff:e.target.value}))}/></div>
+              </div>
+              <div><label className="field-label">Vehicle category</label><select className="field-input" value={car.category} onChange={e=>setCar(c=>({...c,category:e.target.value}))}>{['Economy (e.g. VW Polo)','Compact (e.g. Toyota Corolla)','Compact SUV (e.g. Hyundai Tucson)','Mid-size SUV (e.g. Ford Escape)','Large SUV (e.g. Land Cruiser)','Luxury (e.g. BMW 3 Series)','Minivan (7-8 seater)','Bakkie / 4x4 (Safari)'].map(c=><option key={c} value={c}>{c}</option>)}</select></div>
+              <div><label className="field-label">Notes (optional)</label><textarea className="field-input" rows={2} value={car.notes} onChange={e=>setCar(c=>({...c,notes:e.target.value}))} placeholder="Automatic/manual, child seat, GPS…" style={{resize:'vertical'}}/></div>
+              {ptBal>0&&<div style={{background:'rgba(16,185,129,0.04)',border:'1px solid rgba(16,185,129,0.15)',borderRadius:12,padding:'14px'}}>
+                <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.08em',textTransform:'uppercase',color:'#6B7280',marginBottom:8}}>Reserve lifestyle points</div>
+                <input type="range" min={0} max={ptBal} step={100} value={carPts} onChange={e=>setCarPts(Number(e.target.value))} style={{width:'100%',accentColor:'#059669',marginBottom:6}}/>
+                <div style={{fontSize:13,color:'#6B7280'}}>{carPts>0?<><strong style={{color:'#059669'}}>{Rz(carPts)}</strong> reserved</>:'No points reserved'}</div>
+              </div>}
+              <button className="btn btn-primary" style={{padding:'14px',fontSize:14,background:'linear-gradient(135deg,#10B981,#0EA5E9)'}} disabled={carBusy||!car.location} onClick={submitCar}>{carBusy?'Submitting…':'Submit car rental request →'}</button>
+            </div>
+          </>):(
+            <div style={{background:'linear-gradient(135deg,#10B981,#6366F1)',borderRadius:20,padding:'32px 28px',color:'#fff',textAlign:'center'}}>
+              <div style={{fontSize:48,marginBottom:16}}>🚗</div>
+              <div style={{fontSize:22,fontWeight:800,marginBottom:6}}>{car.category}</div>
+              <div style={{fontSize:14,color:'rgba(255,255,255,0.75)',marginBottom:24}}>{car.location} · {fmtDate(car.pickup)} → {fmtDate(car.dropoff)}</div>
+              <div style={{background:'rgba(0,0,0,0.15)',borderRadius:12,padding:'14px 16px',marginBottom:20,textAlign:'left',fontSize:13,lineHeight:1.8}}>
+                <div style={{fontWeight:700,marginBottom:6}}>What happens next</div>
+                <div style={{opacity:0.85}}>1. Ref: <strong>{carRef}</strong><br/>2. We check availability from local suppliers<br/>3. Quote within 24 hours<br/>4. Confirm → pay → keys waiting</div>
+              </div>
+              <button onClick={()=>setView('mytrips')} style={{background:'#fff',border:'none',borderRadius:12,padding:'12px 28px',color:'#10B981',cursor:'pointer',fontSize:13,fontWeight:700,fontFamily:'inherit'}}>View my trips →</button>
+            </div>
+          )}
+        </>}
+
+        {/* ── MY TRIPS ── */}
+        {view==='mytrips'&&<>
+          <button className="btn btn-ghost" style={{marginBottom:16}} onClick={()=>setView('explore')}>← Explore</button>
+          <div style={{fontSize:11,fontWeight:700,letterSpacing:'0.1em',textTransform:'uppercase',color:'#9CA3AF',marginBottom:16}}>My trips · {allTrips.length} total</div>
+          {allTrips.length===0&&<div style={{textAlign:'center',padding:60,background:'#fff',borderRadius:20,border:'1px solid #E5E7EB'}}>
+            <div style={{fontSize:48,marginBottom:12}}>🌍</div>
+            <div style={{fontWeight:700,color:'#111827',fontSize:16,marginBottom:8}}>No trips yet</div>
+            <div style={{fontSize:13,color:'#6B7280',marginBottom:20}}>Explore destinations and book your first trip</div>
+            <button className="btn btn-primary" onClick={()=>setView('explore')}>Explore →</button>
+          </div>}
+          <div style={{display:'flex',flexDirection:'column',gap:12}}>
+            {allTrips.map(t=>{
+              const grad = t._t==='hotel'?'linear-gradient(135deg,#6366F1,#0EA5E9)':t._t==='flight'?'linear-gradient(135deg,#374151,#6366F1)':'linear-gradient(135deg,#374151,#10B981)';
+              const icon = t._t==='hotel'?'🏨':t._t==='flight'?'✈️':'🚗';
+              const title = t._t==='hotel'?t.hotel_name:t._t==='flight'?`${t.flight_from} → ${t.flight_to}`:t.car_category;
+              const detail = t._t==='hotel'?`${fmtDate(t.check_in)} → ${fmtDate(t.check_out)} · ${t.nights} nights`:t._t==='flight'?`${fmtDate(t.depart_date)} · ${t.passengers} pax · ${t.cabin_class}`:`${t.car_location} · ${fmtDate(t.car_pickup)} → ${fmtDate(t.car_dropoff)}`;
+              return(
+                <div key={t.id} style={{background:'#fff',borderRadius:16,overflow:'hidden',border:'1px solid #E5E7EB',boxShadow:'0 2px 8px rgba(0,0,0,0.04)'}}>
+                  <div style={{background:grad,padding:'16px 20px',display:'flex',justifyContent:'space-between',alignItems:'flex-start'}}>
+                    <div>
+                      <div style={{fontSize:10,color:'rgba(255,255,255,0.6)',fontWeight:700,letterSpacing:'0.12em',textTransform:'uppercase',marginBottom:4}}>{icon} {t._t==='hotel'?'Hotel':t._t==='flight'?'Flight':'Car Rental'} · {t.booking_ref}</div>
+                      <div style={{fontSize:17,fontWeight:800,color:'#fff'}}>{title}</div>
+                      <div style={{fontSize:12,color:'rgba(255,255,255,0.7)',marginTop:2}}>{detail}</div>
+                    </div>
+                    <span className={`pill ${t.status==='confirmed'?'pill-green':t.status==='quoted'?'pill-primary':'pill-amber'}`} style={{flexShrink:0}}>{t.status}</span>
+                  </div>
+                  {t._t!=='hotel'&&t.status==='pending'&&<div style={{padding:'12px 20px',fontSize:12,color:'#6B7280'}}>
+                    Awaiting quote — Vollard Black will contact you within 24 hours
+                  </div>}
+                  {t._t!=='hotel'&&t.status==='quoted'&&t.quoted_amount&&<div style={{padding:'12px 20px',fontSize:13,color:'#374151',fontWeight:600}}>
+                    Quote: <span style={{color:'#6366F1'}}>{Rz(t.quoted_amount)}</span> {t.points_to_use>0&&`· ${Number(t.points_to_use).toLocaleString()} pts reserved`}
+                  </div>}
+                </div>
+              );
+            })}
           </div>
-        </div>
+        </>}
       </div>
-      {toast&&<div className="toast">{toast}</div>}
+      {toast&&<div style={{position:'fixed',bottom:24,left:'50%',transform:'translateX(-50%)',background:'#111827',color:'#fff',padding:'12px 24px',borderRadius:999,fontSize:13,fontWeight:500,boxShadow:'0 4px 20px rgba(0,0,0,0.2)',zIndex:999,whiteSpace:'nowrap'}}>{toast}</div>}
     </>
   );
 }
