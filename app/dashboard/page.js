@@ -45,6 +45,7 @@ export default function Dashboard() {
 
   // Profile edit
   const [editProfile, setEditProfile] = useState(false);
+  const [expandedModule, setExpandedModule] = useState(null);
   const [profileForm, setProfileForm] = useState({});
 
   const flash = msg => { setToast(msg); setTimeout(()=>setToast(''),3500); };
@@ -381,7 +382,7 @@ export default function Dashboard() {
                   <span className="section-label">Your genealogy tree</span>
                   <span style={{fontSize:11,color:'var(--text-muted)'}}>Pinch to zoom · drag to pan</span>
                 </div>
-                <BinaryTree nodes={nodes} members={members} rootMemberId={me.id} isAdmin={false} height={500}/>
+                <BinaryTree nodes={nodes} members={members} rootMemberId={me.id} isAdmin={false} height={typeof window!=="undefined"&&window.innerWidth<768?400:520}/>
               </div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
                 <div className="card" style={{textAlign:'center'}}>
@@ -628,10 +629,30 @@ export default function Dashboard() {
               </div>
 
               {/* Monthly breakdown */}
-              {earningMonths.length===0&&<div style={{textAlign:'center',padding:48,color:'var(--text-muted)'}}>
-                <div style={{fontSize:36,marginBottom:10}}>💰</div>
-                <div style={{fontWeight:600}}>No earnings yet</div>
-                <div style={{fontSize:13,marginTop:6}}>Commission is paid monthly once your rank qualifies</div>
+              {earningMonths.length===0&&<div style={{background:'var(--white)',borderRadius:'var(--r)',border:'1px solid var(--border)',padding:'32px 24px',textAlign:'center'}}>
+                <div style={{fontSize:40,marginBottom:14}}>💰</div>
+                <div style={{fontSize:16,fontWeight:700,color:'var(--text-h)',marginBottom:8}}>No earnings yet</div>
+                <div style={{fontSize:13,color:'var(--text-muted)',lineHeight:1.7,maxWidth:320,margin:'0 auto',marginBottom:20}}>
+                  Commission is calculated monthly and paid to qualifying ranks. Here's how to start earning:
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:10,textAlign:'left',maxWidth:320,margin:'0 auto 20px'}}>
+                  {[
+                    ['🌳','Build your network','Each person you bring in earns you R500 immediately'],
+                    ['📊','Hit Bronze rank','1 member in each leg qualifies you for pool share'],
+                    ['💳','Add banking details','Required before any commission can be paid out'],
+                  ].map(([icon,title,body])=>(
+                    <div key={title} style={{display:'flex',gap:12,alignItems:'flex-start',padding:'12px',background:'var(--surface-1)',borderRadius:'var(--r-sm)',border:'1px solid var(--border)'}}>
+                      <span style={{fontSize:18,flexShrink:0}}>{icon}</span>
+                      <div>
+                        <div style={{fontSize:13,fontWeight:600,color:'var(--text-h)',marginBottom:2}}>{title}</div>
+                        <div style={{fontSize:11,color:'var(--text-muted)'}}>{body}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {(!me?.payout_bank_name)&&<button className="btn btn-primary btn-sm" style={{borderRadius:999}} onClick={()=>go('profile')}>
+                  Add banking details →
+                </button>}
               </div>}
               {earningMonths.map(mo=>(
                 <div key={mo} className="card card-flush" style={{overflow:'hidden'}}>
@@ -715,22 +736,31 @@ export default function Dashboard() {
                     {mods.map(m=>{
                       const done = progress.find(p=>p.module_id===m.id)?.completed;
                       return (
-                        <div key={m.id} style={{background:'#fff',borderRadius:'var(--r)',border:`1px solid ${done?'rgba(16,185,129,0.2)':'var(--border)'}`,padding:'16px 18px',marginBottom:8,display:'flex',alignItems:'center',gap:14,boxShadow:'var(--shadow-sm)'}}>
-                          <div style={{width:40,height:40,borderRadius:'var(--r-sm)',background:done?'var(--green-bg)':'var(--surface-2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>
-                            {done?'✅':'📖'}
-                          </div>
-                          <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontSize:14,fontWeight:700,color:'var(--text-h)',display:'flex',alignItems:'center',gap:8}}>
-                              {m.title}
-                              {m.required&&!done&&<span className="pill pill-amber" style={{fontSize:9}}>Required</span>}
-                              {done&&<span className="pill pill-green" style={{fontSize:9}}>Done</span>}
+                        <div key={m.id} style={{background:'#fff',borderRadius:'var(--r)',border:`1px solid ${done?'rgba(16,185,129,0.2)':'var(--border)'}`,marginBottom:8,boxShadow:'var(--shadow-sm)',overflow:'hidden'}}>
+                          <div style={{padding:'14px 16px',display:'flex',alignItems:'center',gap:14,cursor:'pointer'}} onClick={()=>setExpandedModule(expandedModule===m.id?null:m.id)}>
+                            <div style={{width:38,height:38,borderRadius:'var(--r-sm)',background:done?'var(--green-bg)':'var(--surface-2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>
+                              {done?'✅':'📖'}
                             </div>
-                            <div style={{fontSize:11,color:'var(--text-muted)',marginTop:3,lineHeight:1.5}}>{m.description}</div>
-                            <div style={{fontSize:10,color:'var(--text-dim)',marginTop:4}}>{m.duration_mins||m.duration_min} min read</div>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontSize:14,fontWeight:700,color:'var(--text-h)',display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                                {m.title}
+                                {m.required&&!done&&<span className="pill pill-amber" style={{fontSize:9}}>Required</span>}
+                                {done&&<span className="pill pill-green" style={{fontSize:9}}>Complete</span>}
+                              </div>
+                              <div style={{fontSize:11,color:'var(--text-muted)',marginTop:2}}>{m.duration_mins||m.duration_min} min · {m.description?.slice(0,60)}…</div>
+                            </div>
+                            <i className={`ti ti-chevron-${expandedModule===m.id?'up':'down'}`} style={{fontSize:16,color:'var(--text-muted)',flexShrink:0}}/>
                           </div>
-                          {!done&&<button className="btn btn-primary btn-xs" style={{flexShrink:0,borderRadius:999}} onClick={()=>markTraining(m.id)}>
-                            Mark done
-                          </button>}
+                          {expandedModule===m.id&&<div style={{borderTop:'1px solid var(--border)',padding:'16px 18px',background:'var(--surface-1)'}}>
+                            {m.body?(
+                              <pre style={{fontSize:13,color:'var(--text-sub)',lineHeight:1.8,whiteSpace:'pre-wrap',fontFamily:'inherit',margin:0}}>{m.body}</pre>
+                            ):(
+                              <div style={{fontSize:13,color:'var(--text-muted)',fontStyle:'italic'}}>{m.description}</div>
+                            )}
+                            {!done&&<button className="btn btn-primary btn-sm" style={{marginTop:16,borderRadius:999}} onClick={()=>{markTraining(m.id);setExpandedModule(null);}}>
+                              Mark as complete ✓
+                            </button>}
+                          </div>}
                         </div>
                       );
                     })}
